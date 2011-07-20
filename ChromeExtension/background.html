@@ -14,11 +14,24 @@
 						loadScript();
 				}
 			});
+			function getScriptSource(src, callback) {
+				$.ajax({
+					url:src,
+					success:callback
+				});
+			}
+			
 			chrome.extension.onRequest.addListener(function(request, sender, sendResponse){
 				switch(request.name) {
 					case 'getScript':
-						sendResponse((localStorage.getItem('jQueryUI') + localStorage.getItem('scriptUpdater') + localStorage.getItem('scriptOptions') +
-						 		localStorage.getItem('script')).replace(/uneval\((.*?)\)/, "'(' + JSON.stringify($1) + ')'"));  
+						var script = '';
+						getScriptSource(chrome.extension.getURL("includes/jqueryui.js"), function(source) {
+							script += source;
+							getScriptSource(chrome.extension.getURL("includes/userscript.js"), function(source) {
+								script += source;
+								sendResponse(script);  
+							})
+						});
 						break;	
 					case 'growl':
 						var notification = webkitNotifications.createNotification(

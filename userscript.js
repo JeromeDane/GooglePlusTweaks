@@ -1039,7 +1039,7 @@ function enableMouseOverPreviewOnImage(selector) {
 				currentPreviewTarget = false;
 			});
 			$(img).mousemove(function(e) {
-				currentPreviewTarget = this();
+				currentPreviewTarget = this;
 				repositionPreviewWindow(e);
 			});
 		}

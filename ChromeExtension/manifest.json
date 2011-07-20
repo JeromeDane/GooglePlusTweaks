@@ -1,9 +1,15 @@
 {
    "background_page": "background.html",
    "content_scripts": [ {
-      "js": [ "includes/jquery.js", "content.js" ],
+      "js": [ 
+      	"includes/jquery.js", 
+      	"includes/gm_functions.js", 
+      	"includes/jqueryui.js", 
+      	"includes/script_options.js", 
+      	"includes/userscript.js"
+      ],
       "matches": [ "http://plus.google.com/*", "https://plus.google.com/*" ],
-      "run_at": "document_start"
+      "run_at": "document_end"
    } ],
    "description": "Tweaks to the layout and features of Google+ (Google \"Plus\") Full width, thumbnails only, etc.",
    "icons": {
@@ -12,5 +18,5 @@
    "name": "Google+ Tweaks",
    "options_page": "options.html",
    "permissions": [ "http://plus.google.com/*", "https://plus.google.com/*", "http://userscripts.org/*", "unlimited_storage", "notifications" ],
-   "version": "0.3"
+   "version": "0.17"
 }
