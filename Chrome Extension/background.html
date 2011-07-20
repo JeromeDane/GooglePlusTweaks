@@ -1,0 +1,52 @@
+<html>
+	<head>
+		<script src="includes/jquery.js"></script>
+		<script src="includes/common.js"></script>
+		<script>
+			if(!localStorage.getItem('script'))
+				loadScript();
+			// look for update
+			$.ajax({
+				url:'http://userscripts.org/scripts/source/106166.meta.js',
+				success:function(data) {
+					var version = data.toString().match(/@version\s+([^\s]+)/)[1].toString();
+					if(localStorage.getItem('installedVersion') != version)
+						loadScript();
+				}
+			});
+			chrome.extension.onRequest.addListener(function(request, sender, sendResponse){
+				switch(request.name) {
+					case 'getScript':
+						sendResponse((localStorage.getItem('jQueryUI') + localStorage.getItem('scriptUpdater') + localStorage.getItem('scriptOptions') +
+						 		localStorage.getItem('script')).replace(/uneval\((.*?)\)/, "'(' + JSON.stringify($1) + ')'"));  
+						break;	
+					case 'growl':
+						var notification = webkitNotifications.createNotification(
+						  chrome.extension.getURL("icon.png"),
+						  request.title,
+						  request.message
+						);
+						notification.show();  
+						break;	
+					case 'ajax':
+						var type = (!request.options.method) ? 'GET' : request.options.method;
+						var ajaxOptions = {
+							type:type,
+							url:request.options.url,
+							success:function(response) {
+								var obj = {
+									responseText:response,
+									readyState:'complete'
+								}
+								sendResponse(obj);
+							}
+						};
+						if(type == 'POST' && request.options.data)
+							ajaxOptions.data = request.options.data;
+						$.ajax(ajaxOptions);
+						break;
+				}
+			});
+		</script>
+	</head>
+</html>
