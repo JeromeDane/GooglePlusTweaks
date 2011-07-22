@@ -16,7 +16,6 @@
       "128": "icon.png"
    },
    "name": "Google+ Tweaks",
-   "options_page": "options.html",
    "permissions": [ "http://plus.google.com/*", "https://plus.google.com/*", "http://userscripts.org/*", "unlimited_storage", "notifications" ],
-   "version": "0.17"
+   "version": "0.20"
 }

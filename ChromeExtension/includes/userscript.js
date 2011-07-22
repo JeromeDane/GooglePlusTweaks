@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.017
+// @version        0.020
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,16 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.020 Added check for /h#/ image resize format for previews
+// @history        0.020 Imposed max height and width on preview images of window size - 40px
+// @history        0.019 Quick attempt to fix persistent "all images to preview image" bug
+// @history        0.019 Fixed preview images stretching off the window to the right
+// @history        0.018 Fixed broken/buggy image preview
+// @history        0.018 You can now choose the delay before showing image previews
+// @history        0.018 Avatars in "added you to circles" notifications now use image previews
+// @history        0.018 Profile pictures in left column of profiles now use image previews
+// @history        0.018 Photos in profile pages now use image previews
+// @history        0.018 Fixed left column width on notifications feed when using full width
 // @history        0.017 Improve stability of mute button 
 // @history        0.016 Started refactoring all code to make it easier to maintain 
 // @history        0.016 Removed hide post button options (not really used anymore) 
@@ -105,12 +115,16 @@ var vCardSelector = 'table.a-ia-ta';
 var vcardAvatarSelector = vCardSelector + ' img.a-ia-tk[src*="googleusercontent"]';
 var vcardAvatarInCommonSelector = vCardSelector + ' img.a-ia-Bq[src*="googleusercontent"]';
 
+var previewHeightMax = $(window).height() - 40;
+var previewWidthMax = previewHeightMax;
+var currentPreviewTarget = false;
+
 function GTweaks() {
 	var self = this;
 	this.css = '';
 	this.pollInterval = 1000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.017;
+	this.version = 0.020;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -148,11 +162,18 @@ function GTweaks() {
 				description:'Add links next to names in posts to easily mention them',
 				'default':true
 			},
-			"mouseOverImages":{
-				label:'Rollover Previews',
-				type:'checkbox',
-				description:'Show previews of images as you mouse over them',
-				'default':true
+			"imagePreviews":{
+				label:'Image Previews',
+				type:'select',
+				options:{
+					'none':'Disabled',
+					'0':'No delay',
+					'500': '0.5 second delay',
+					'1000': '1 second delay',
+					'2000': '2 second delay'
+				},
+				description:'Show image preview on rollover',
+				'default':'500'
 			},
 			"comments":{
 				label:'Toggle Comments',
@@ -367,6 +388,7 @@ function GTweaks() {
 				
 						// left column
 						leftCol + ' { width:188px; float:left; }' +
+						leftCol + ' .a-b-la-T { width:188px; float:left; }' +
 						
 						// center content
 						contentCol + ' { width:' + contentWidth  + 'px; }' +
@@ -379,7 +401,9 @@ function GTweaks() {
 						// center content elements
 						contentCol + ' .a-f-n-A, #contentPane .a-f-p { width:100%; }' +
 				
-						contentCol + ' .n-ci, ' + contentCol + ' .v-u-y-m { margin-right:40px; }'+
+						contentCol + ' .n-ci, ' + contentCol + ' .v-u-y-m { margin-right:40px; }' +
+						// content margin in notifications
+						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc { margin-left:188px !important; }' +
 				
 						// post view content column
 						'#contentPane.a-p-M-T.a-p-M-T-hk-xc { width:100%; }' +
@@ -407,7 +431,7 @@ function GTweaks() {
 				}
 			}
 		},
-		inlinePlusShare:{
+		inlinePlusShare: {
 			init: function() {
 				if(Config.get('inlinePlusShare')) {
 					self.addStyle(
@@ -436,6 +460,129 @@ function GTweaks() {
 					});
 					if($('*', this).size() == 0) $(this).remove();
 				});
+			}
+		},
+		imagePreviews: {
+			wrapper: null,
+			init: function() {
+				if(Config.get('imagePreviews') != 'none' && $('#gb').size() > 0) {
+					var previewDiv = document.createElement('div');
+					previewDiv.id = 'bcGplusTweaksPreview';
+					previewDiv.innerHTML = '<div class="loading">&nbsp;</div><img id="bcGPTwksPrvImg" src=""/>';
+					$(previewDiv).mousemove(self.features.imagePreviews.reposition);
+					$('body').append(previewDiv);
+					self.features.imagePreviews.wrapper = previewDiv;
+					
+					self.addStyle( '#bcGplusTweaksPreview { ' +
+							'border:2px solid red; position:absolute; z-index:5000; top:0; left:0; display:none;' + 
+							'max-width:' + previewWidthMax + 'px; border:4px double #333; background:#fff; box-shadow: 0 5px 8px rgba(0, 0, 0, 0.6);' +
+						'}' +
+							'#bcGplusTweaksPreview img { ' +
+							'margin-bottom:-3px; max-width:' + previewWidthMax + 'px; display:none; ' +
+							'max-height:' + ($(window).height() - 40) + 'px; ' +
+							'max-width:' + ($(window).width() - 40) + 'px; ' +
+						'}' +
+						'#bcGplusTweaksPreview .loading { ' +
+							'background:url(https://lh4.googleusercontent.com/-6CrxAryPl6o/TigTcQV2HmI/AAAAAAAAAQg/tFbeZcP4Mro/loading.gif) no-repeat center; height:50px; width:50px; }'
+					);
+					self.addPolling(self.features.imagePreviews.processPosts);
+				}
+			},
+			loaded:{},
+			mousePos: null,
+			reposition: function() {
+				var previewDiv = self.features.imagePreviews.wrapper;
+				var e = self.features.imagePreviews.mousePos;
+				$(previewDiv).css('left', e.pageX + 30);
+				$(previewDiv).css('top', e.pageY - 30);
+				
+				var isLoading = $('.loading', previewDiv).css('display') == 'block';
+				
+				var h = isLoading ? 50 : $('#bcGPTwksPrvImg').height();
+				var w = isLoading ? 50 : $('#bcGPTwksPrvImg').width();
+				
+				var bottom = parseInt($(previewDiv).css('top').replace(/[^\d]/, '')) + h - $(document).scrollTop();
+				var right = parseInt($(previewDiv).css('left').replace(/[^\d]/, '')) + w;
+				if(right > $(window).width()) {
+					if(e.pageX - w - 30 > 10) {
+						$(previewDiv).css('left', e.pageX - w - 30);
+					} else {
+						$('#bcGPTwksPrvImg').width($(window).width() - e.pageX - 60);
+					}
+				}
+				if(bottom > $(window).height()) {
+					$(previewDiv).css('top', $(window).height() - 20 - h + $(document).scrollTop());
+				}
+			},
+			enableTarget: function(selector) {
+				var maxHeight = $(window).height() - 40;
+				var previewDiv = self.features.imagePreviews.wrapper;
+				$(selector).each(function() { 
+					if($(playVideoIconSelector, $(this).parent()).size() == 0) {	// no preview for videos
+						var img = this;
+						if($(img).attr('rel') != 'bcGplusTwImgPrvw') {
+							$(img).attr('rel', 'bcGplusTwImgPrvw');
+							$(img).mouseover(function(e) {
+								self.features.imagePreviews.mousePos = e;
+								self.features.imagePreviews.reposition();
+								currentPreviewTarget = img;
+								setTimeout(function() {
+									if(currentPreviewTarget) {
+										$('.loading', previewDiv).show();
+										$('#bcGPTwksPrvImg').hide();
+										$(previewDiv).fadeIn('fast');
+										var src = currentPreviewTarget.src.replace(/\/w\d+[^\/]+\//, '/w' + previewWidthMax + '/');
+										src = src.replace(/\/s\d+[^\/]+\//, '');
+										src = src.replace(/\/h\d+[^\/]+\//, '/h' + maxHeight + '/');
+										src = src.replace(/sz=\d+/, '');
+										src = src.replace(/resize_h=\d+/, '');
+										src = src.replace(/&$/, '');
+										$('#bcGPTwksPrvImg').load(function() {
+											if(currentPreviewTarget) {
+												function showImage() {
+													$('.loading', previewDiv).hide();
+													$('#bcGPTwksPrvImg').show();
+													self.features.imagePreviews.reposition();
+													self.features.imagePreviews.loaded[src] = true;
+												}
+												if(typeof(self.features.imagePreviews.loaded[src]) != 'undefined') 
+													showImage();
+												else 
+													setTimeout(showImage, 500);
+											}
+										});
+										$('img', previewDiv).attr('src', src);
+									}
+								}, parseInt(Config.get('imagePreviews')));
+							});
+							$(img).mouseout(function() {
+								currentPreviewTarget = false;
+								$(previewDiv).fadeOut('fast', function() {
+									$('#bcGPTwksPrvImg').attr('src', '');
+								});
+							});
+							$(img).mousemove(function(e) {
+								self.features.imagePreviews.mousePos = e;
+								currentPreviewTarget = this;
+								self.features.imagePreviews.reposition(e);
+							});
+						}
+					}
+				});
+			},
+			processPosts: function() {
+				self.features.imagePreviews.enableTarget(postMediaSelector);
+				self.features.imagePreviews.enableTarget(postAvatarSelector);
+				self.features.imagePreviews.enableTarget(myAvatarSelector);
+				self.features.imagePreviews.enableTarget(vcardAvatarSelector);
+				self.features.imagePreviews.enableTarget(vcardAvatarInCommonSelector);
+				self.features.imagePreviews.enableTarget(hangoutNoticeAvatarSelector);
+				// notification avatars
+				self.features.imagePreviews.enableTarget('.eJn3s.a-b-l-Z-hd-z.IurX4c');
+				// main profile pics in left column
+				self.features.imagePreviews.enableTarget('.ea-g-Vc-pa-A img.ea-g-Vc-pa');
+				// pictures in profile pages
+				self.features.imagePreviews.enableTarget('.a-c-hb-Qa img.a-b-c-hb-Qa-pa.a-c-hb-Qa-pa');
 			}
 		},
 		comments: {
@@ -748,7 +895,6 @@ function GTweaks() {
  		for(var i = 0; i < self.pollFuncions.length; i++) {
  			self.pollFuncions[i]();
  		}
-		if(Config.get('mouseOverImages')) mouseOverImages();
  		setTimeout(self.startPolling, self.pollInterval);
  	};
 	return this.construct();
@@ -959,96 +1105,6 @@ function FavIcon(gPlusIcon) {
 	return this.construct();
 }
 
-function stylePreviewDiv() {
-	previewDiv = document.createElement('div');
-	previewDiv.id = 'bcGplusTweaksPreview';
-	previewDiv.innerHTML = '<img src=""/>';
-	$(previewDiv).mousemove(repositionPreviewWindow);
-	$('body').append(previewDiv);
-	
-	css += '#bcGplusTweaksPreview { ' +
-		'border:2px solid red; display:none; position:absolute; z-index:5000;' + 
-		'max-width:' + previewWidthMax + 'px; border:4px double #333; background:#fff; box-shadow: 0 5px 8px rgba(0, 0, 0, 0.6);' +
-	'}' +
-		'#bcGplusTweaksPreview img { ' +
-		'margin-bottom:-3px; max-width:' + previewWidthMax + 'px;' +
-	'}';
-}
-function repositionPreviewWindow(e) {
-	$(previewDiv).css('left', e.pageX + 30);
-	$(previewDiv).css('top', e.pageY - 30);
-	
-	var h = $('img', previewDiv).height();
-	var w = $('img', previewDiv).width();
-	
-	var bottom = parseInt($(previewDiv).css('top').replace(/[^\d]/, '')) + h - $(document).scrollTop();
-	var right = parseInt($(previewDiv).css('left').replace(/[^\d]/, '')) + w;
-	if(right > $(window).width()) {
-		if(e.pageX - w - 30 > 10) {
-			$(previewDiv).css('left', e.pageX - w - 30);
-		}
-	}
-	if(bottom > $(window).height()) {
-		$(previewDiv).css('top', $(window).height() - 20 - h + $(document).scrollTop());
-	}
-}
-function mouseOverImages() {
-	enableMouseOverPreviewOnImage(postMediaSelector);
-	enableMouseOverPreviewOnImage(postAvatarSelector);
-	enableMouseOverPreviewOnImage(myAvatarSelector);
-	enableMouseOverPreviewOnImage(vcardAvatarSelector);
-	enableMouseOverPreviewOnImage(vcardAvatarInCommonSelector);
-	enableMouseOverPreviewOnImage(hangoutNoticeAvatarSelector);
-}
-function enableMouseOverPreviewOnImage(selector) {
-	$(selector).each(function() { 
-		var img = this;
-		if($(img).attr('rel') != 'bcGplusTwImgPrvw') {
-			$(img).attr('rel', 'bcGplusTwImgPrvw');
-			$(img).mouseover(function(e) {
-				currentPreviewTarget = img;
-				setTimeout(function() {
-					if(currentPreviewTarget) {
-						var src = currentPreviewTarget.src.replace(/\/w\d+[^\/]+\//, '/w' + previewWidthMax + '/');
-						src = src.replace(/sz=\d+/, '');
-						src = src.replace(/resize_h=\d+/, '');
-						src = src.replace(/&$/, '');
-						$('img', previewDiv).load(function() {
-							if(currentPreviewTarget) {
-								
-								$(previewDiv).show();
-								//repositionPreviewWindow(e);
-								setTimeout(function() { repositionPreviewWindow(e); }, 200);
-								//setTimeout(function() { repositionPreviewWindow(e); }, 200);
-								//setTimeout(function() { repositionPreviewWindow(e); }, 400);
-								/*
-								$(previewDiv).fadeIn(function() {
-									repositionPreviewWindow(e);
-								});
-								*/
-							}
-						});
-						$('img', previewDiv).attr('src', src);
-					}
-				}, 500);
-			});
-			$(img).mouseout(function() {
-				$(previewDiv).fadeOut(function() {
-					$('img', previewDiv).attr('src', '');
-				});
-				currentPreviewTarget = false;
-			});
-			$(img).mousemove(function(e) {
-				currentPreviewTarget = this;
-				repositionPreviewWindow(e);
-			});
-		}
-	});
-}
-function easyMentionsPoll() {
-	
-}
-
 function simulateClick(element) {
     var clickEvent;
     clickEvent = document.createEvent("MouseEvents")
@@ -1071,12 +1127,6 @@ if(!document.location.toString().match(/frame/)) {
 	
 	
 //	if(Config.get('postButtons')) stylePostButtons();
-	
-	var previewDiv = null;
-	var previewHeightMax = $(window).height() - 40;
-	var previewWidthMax = previewHeightMax;
-	var currentPreviewTarget = false;
-	if(Config.get('mouseOverImages') && $('#gb').size() > 0) stylePreviewDiv();
 	
 	
 	
