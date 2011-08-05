@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.020
+// @version        0.021
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,14 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.021 Fixes to handle change in Google Plus code
+// @history        0.021 Fixed stream not jumping to top when clicking stream links with fixed navigation
+// @history        0.021 Added ability to hide notice of new people sharing with you
+// @history        0.021 Added collapse comments button to end of post comment lists
+// @history        0.021 Number of comments now auto-updates when comments are collapsed
+// @history        0.021 Increased polling interval to 3 seconds from 1 to reduce resource usage
+// @history        0.021 Fixed Sparks layout in full width mode
+// @history        0.021 Replaced "mute this post" in incoming feed with mute button when using fast mute
 // @history        0.020 Added check for /h#/ image resize format for previews
 // @history        0.020 Imposed max height and width on preview images of window size - 40px
 // @history        0.019 Quick attempt to fix persistent "all images to preview image" bug
@@ -91,21 +99,91 @@
 //
 // ==/UserScript==
 
+var debugSelectors = false;
 
-var contentSelector = '#contentPane';
+var selectors = {
+	content: '#content',
+	contentPane: '#contentPane',
+	googleBar: '#gb',
+	toolBar: '.a-aa-S.a-c-aa-S'
+};
+selectors.widthRestrictor = '.wy';
+selectors.chatRoster = '#oz-chat-roster';
+selectors.stream = selectors.content + ' .a-m-C-S.a-C.a-m-C-wb-Qb'
+selectors.streamLeftCol = selectors.stream + ' .a-m-mb-S.d-q-p.a-c-m-mb-S';
+selectors.welcomeLink = selectors.streamLeftCol + ' h2 + a.d-k.a-c-k-eb.a-mb-k.a-mb-B7';
+selectors.streamContent = selectors.stream + ' .a-m-K-S.a-m-K-S-Rh-wb'
+selectors.streamRightCol = selectors.stream + ' .a-c-qC-S.a-qC-S.d-q-p';
+selectors.streamRightColSuggestions = selectors.streamRightCol + ' .T0';
+selectors.streamNotificationCol = selectors.stream + ' .a-m-K-S.a-m-K-S-Kr-wb';
+selectors.streamLinksWrapper = '.a-c-mb-C';
+selectors.streamShareWrapper = selectors.stream + ' .ev.Au + div';
+selectors.incomingNotice = '.a-gb-C.a-c-gb-C';
+selectors.incomingNoticeAvatar = selectors.incomingNotice + ' .d-q-p.a-gb-xC';
+selectors.incomingNoticeNumMore = selectors.incomingNotice + ' .d-q-p.a-gb-BA';
+selectors.incomingPostedBy = selectors.contentPane + ' .ov.SD';
+selectors.incomingPostedByAddToCircles = selectors.incomingPostedBy + ' .hr.uz.d-q-p';
+selectors.incomingPostedByMutePost = 'span.d-k.ir.xz';
+selectors.sparksStream = '.a-m-K-S.a-m-K-S-Kr-wb';
+selectors.sparksSearchButton = selectors.sparksStream + ' .d-q-p.j-e.j-e-Y.l2.e1';
+selectors.sparksAddInterestButton = selectors.sparksStream + ' .d-q-p.j-e.j-e-Y.b1.i2';
+selectors.profile = selectors.content + ' .a-m-K-S.a-m-K-S-Tf-wb';
+selectors.profileContent = selectors.profile + ' .a-c-b-m-wc.a-b-m-wc'; 
+selectors.profileLeftCol = selectors.profile + ' .a-c-b-Fa-wc.a-b-Fa-wc';
+selectors.post = 'div[id^="update"]';
+selectors.postCommentsWrapper = '.Ol.iv';
+selectors.postComment = '.Ly.Tk';
+selectors.postCommentButton = '.d-k.wf';
+selectors.postCommentsOld = '.My.al';
+selectors.postCommentsMoreButton = '.d-k.Ck';
+selectors.postCommentsOldButton = '.d-k.Dk[role="button"]';
+selectors.postButton = selectors.post + ' span.d-k.Jt.Oi';
+selectors.postPlussesAndShares = ' .dl.pz';
+selectors.postPlussesWrapper = ' .lv';
+selectors.postPlusses = ' .PD.zp.d-q-p.Zf';
+selectors.postPlusOneButton =  ' .Jn button';
+selectors.postSharesWrapper = ' .mv';
+selectors.postShareButton = 'span.d-k.cl[role="button"]';
+selectors.postShares = ' span.d-k.gr';
+selectors.postMuteButton = '.a-Y-k.d-V.a-Y-k-ye.Sl.Ki';
+selectors.photosWrapper = '.a-g-ra-K.a-m-K.Te-K[token="photos"]';
+selectors.leftColPhotos = selectors.photosWrapper + ' > .a-g-lm';
+selectors.footer = '.a-Sa-S.a-c-Sa-S';
+selectors.muteNotice = selectors.post + '.tf.Ek.vp.nk';
+selectors.sendFeedback = 'a.a-Wj-Lh';
+	
+if(debugSelectors && $(selectors.content).size() > 0) {
+	setTimeout(function() {
+		var html = '<div id="bcGPTksSelectorDebug" style="position:absolute; top:0; left:0; font-weignt:normal; padding:1em; border:1px solid #000; background:#fff; z-index:99999;">';
+		html += '</div>';
+		function debugSelectors() {
+			var html = '<p>Selectors Found:</p>';
+			for(var x in selectors) {
+				var numFound = $(selectors[x]).size();
+				html += '<span style="' + (numFound == 0 ? 'color:red;' : '') + '">' + x + ' ' + numFound + '</span><br/>';
+			}
+			$('#bcGPTksSelectorDebug').html(html);
+		}
+		debugSelectors();
+		setInterval(debugSelectors, 3000);
+		$('body').append(html);
+	}, 2000);
+}
+
+
+
 var hangoutNoticeAvatarSelector = '.a-f-i-ie-p img[src*="googleusercontent"]';
-var leftColSelector = '.a-p-la-T.d-s-r.a-b-p-la-T';
-var myAvatarSelector = 'img.a-b-Rf-Lz.a-Rf-Lz';
+var myAvatarSelector = 'img.a-b-c-y-ma.photo';
+var postBodySelector = selectors.post + ' .Ty';
+var postAvatarSelector = selectors.post + ' img.Nt.hm';
+var postMenuSelector = selectors.post + ' .Cp.d-E[role="menu"]';
+
+
 var playVideoIconSelector = '.ea-S-ei';
-var plusOnePostButtonSelector = '.a-f-i-bg button';
-var postAvatarSelector = 'img.a-f-i-q.a-b-f-i-q';
-var postSelector = contentSelector + ' div[id^="update"]';
-var postBodySelector = '.a-b-f-S-oa';
-var postMediaSelector = '#contentPane ' + postBodySelector + ' img[src*="googleusercontent"]';
-var postMenuSelector = '.a-f-i-Ia-D[role="menu"]';
-var postAddCommentSelector = postSelector + ' span.d-h.a-b-f-i-W-h[role="button"]';
+
+var postMediaSelector = '#content ' + postBodySelector + ' img[src*="googleusercontent"]';
+var postAddCommentSelector = selectors.post + ' span.d-h.a-b-f-i-W-h[role="button"]';
 var postMenuItemSelector = postMenuSelector + ' div[role="menuitem"]';
-var postButtonSelector = 'h3.a-za + span[role="button"]';
 var profileColumnSelector = '.a-b-c-ka-Mc.a-c-ka-Mc'
 var profileLinkSelector = 'a[oid]';
 var rightColSelector = '.a-b-Cs-T.a-Cs-T.d-s-r';
@@ -115,6 +193,7 @@ var vCardSelector = 'table.a-ia-ta';
 var vcardAvatarSelector = vCardSelector + ' img.a-ia-tk[src*="googleusercontent"]';
 var vcardAvatarInCommonSelector = vCardSelector + ' img.a-ia-Bq[src*="googleusercontent"]';
 
+
 var previewHeightMax = $(window).height() - 40;
 var previewWidthMax = previewHeightMax;
 var currentPreviewTarget = false;
@@ -122,9 +201,9 @@ var currentPreviewTarget = false;
 function GTweaks() {
 	var self = this;
 	this.css = '';
-	this.pollInterval = 1000;		// in milliseconds
+	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.020;
+	this.version = 0.021;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -157,13 +236,13 @@ function GTweaks() {
 				'default':'none'
 			},
 			"easyMentions":{
-				label:'Easy Mentions',
+				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Easy Mentions</span>',
 				type:'checkbox',
-				description:'Add links next to names in posts to easily mention them',
-				'default':true
+				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Add links next to names in posts to easily mention them</span>',
+				'default':false
 			},
 			"imagePreviews":{
-				label:'Image Previews',
+				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Image Previews</span>',
 				type:'select',
 				options:{
 					'none':'Disabled',
@@ -172,8 +251,8 @@ function GTweaks() {
 					'1000': '1 second delay',
 					'2000': '2 second delay'
 				},
-				description:'Show image preview on rollover',
-				'default':'500'
+				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Show image preview on rollover</span>',
+				'default':'none'
 			},
 			"comments":{
 				label:'Toggle Comments',
@@ -188,9 +267,9 @@ function GTweaks() {
 				'default':true
 			},
 			"thumbsOnly":{
-				label:'Thumbnails Only',
+				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Thumbnails Only</span>',
 				type:'checkbox',
-				description:'Force all images in posts to thumbnails',
+				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Force all images in posts to thumbnails</span>',
 				'default':false
 			},
 			"fixedNav":{
@@ -220,6 +299,11 @@ function GTweaks() {
 				label:'Chat List',
 				type:'checkbox',
 				description:'Hide the chat list in the left column'
+			},
+			"hideIncomingNotice":{
+				label:'Incoming Notice',
+				type:'checkbox',
+				description:'Hide "# new people are sharing with you" notice'
 			},
 			"hideSendFeedback":{
 				label:'Send Feedback',
@@ -278,11 +362,10 @@ function GTweaks() {
 		}
 	};
 	this.selectors = {
-		googleBar: 'div.a-Eo-T #gb',
-		muteNotice: '.a-f-i-Fb-Un',
-		post: '#contentPane div[id^="update"]',
+		muteNotice: selectors.post + '.Of.al.zp.Kk',
+		post: '#content div[id^="update"]',
 		postBody: '.a-b-f-S-oa',
-		postMedia: '#contentPane .a-b-f-S-oa img[src*="googleusercontent"]'
+		postMedia: '#content .a-b-f-S-oa img[src*="googleusercontent"]'
 	};
 	this.features = {
 		favicon: {
@@ -307,12 +390,12 @@ function GTweaks() {
 		},
 		fixedNavigation: {
 			init: function() {
-				var leftWidth = $(leftColSelector).width();
+				var leftWidth = $(selectors.streamLeftCol).width();
 				var rightColOffset = ($(window).width() / 2) + 280;
 				
 				function fixGbar(height) {
-					self.addStyle(self.selectors.googleBar + ' { position:fixed; top:0; width:100%; }');
-					$(self.selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
+					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; }');
+					$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
 				}
 				switch(Config.get('fixedNav')) {
 					case 'gBar':
@@ -320,31 +403,27 @@ function GTweaks() {
 						break;
 					case 'all':
 						fixGbar(90);
-						self.addStyle('div.a-U-T { position:fixed; top:30px; z-index:1000; }' +
-							'#gbg { z-index:1200; }' +
-							leftColSelector + ' > div { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' +
-							rightColSelector + ' { position:fixed; top:90px; ' + 
+						self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
+							selectors.googleBar + ' { z-index:1200; }' +
+							// stream view
+							selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' +
+							selectors.streamRightCol  + ' { position:fixed; top:90px; ' + 
 								(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
 							' }' +
-							// notifications view
-							'#contentPane.a-p-M-T.a-p-M-T-Gp-xc { margin-left: ' + (Config.get('fullWidth') ? leftWidth : 0) + 'px !important; }' + 
+							selectors.streamNotificationCol + ', ' + selectors.streamContent + ' { position:relative; left:' + ($(selectors.streamLeftCol).width() + 20) + 'px; }' +
 							// pictures view
-							'#contentPane.a-p-M-T.a-p-M-T-ud-oc > div > .a-g-kmrBZe { position:fixed; top:90px; }' +
+							selectors.leftColPhotos + ' { position:fixed; top:90px; }' +
 							// profile view
-							'#contentPane .a-b-c-ka-Mc.a-c-ka-Mc { position:fixed; top:90px; ' + 
-								(Config.get('fullWidth') ? '' : 'left:' + (rightColOffset - 760) + 'px;') + 
-							' }' +
-							// profile left column (thanks for the heads up Matt Mastracci)
-							profileColumnSelector + ' { overflow-y:auto; height:' + ($(window).height() - 90) + 'px !important; width:214px; }' +
-							// "add to circles button (thanks Matt Kruse)
-							'.a-p-M-T.a-p-M-T-hk-xc .a-b-c-K.a-c-K { position:fixed; right:0; top:35px; z-index:1100;}'
+							selectors.profileLeftCol + ' { position:fixed; top:90px; ' + 
+								(Config.get('fullWidth') ? '' : 'left:' + (rightColOffset - 760) + 'px;') +
+							' }'
 						);
 						// make the doc scroll to the top on left column click
-						$(leftColSelector + ' .a-b-la-T').click(function() {
+						$(selectors.streamLeftCol + ' .a-b-la-T').click(function() {
 							$(document).scrollTop(0);
 						});
 						// make the doc scroll to the top on top grey bar button click
-						$('.a-A.a-U-A a').click(function() {
+						$(selectors.streamLinksWrapper).click(function() {
 							$(document).scrollTop(0);
 						});
 						// reposition document so current post is in view
@@ -358,75 +437,52 @@ function GTweaks() {
 							}
 						});
 						break;
-						
 				}
 			}
 		},
 		fullWidth: {
 			init: function() {
 				if(Config.get('fullWidth')) {
-					var leftCol = '.a-p-la-T.d-s-r.a-b-p-la-T';
-					$(leftCol).attr('id', 'BC_LEFT_COL');
-				
-					var contentCol = '#contentPane';
-				
-					$(contentCol).before($(rightColSelector));
-				
-					contentCol += '.a-p-M-T.a-p-M-T-gi-xc';
-				
-					var leftColWidth = $(leftCol).width();
-					var rightColWidth = $(rightColSelector).width();
-					var contentWidth = $(document).width() - (Config.get('hideRightCol') ? 0 : leftColWidth)  - rightColWidth - 32;
-					var profileWidth = $(document).width() - 233;
-				
-					self.addStyle( 
-						// header 
-						'.a-U-T .a-A.a-U-A { width:100%; }' +
-				
-						// inner content padding
-						'#content .a-p-A-T.a-A.a-p-A-xc-zb { width:100%;  }' +
-				
-						// left column
-						leftCol + ' { width:188px; float:left; }' +
-						leftCol + ' .a-b-la-T { width:188px; float:left; }' +
+					var leftColWidth = $(selectors.streamLeftCol).width() + 20;
+					var contentWidth = $(window).width() - leftColWidth - $(selectors.streamRightCol).width();
+					var notificationWidth = $(window).width() - leftColWidth - 25;
+					var profileWidth = $(window).width() - $(selectors.profileLeftCol).width() - 235;
+					self.addStyle(
+						selectors.widthRestrictor + ' { width:100% !important; }' +
+							
+						selectors.contentPane + ' { height:100%; }' +
+						selectors.stream + ' { position:absolute; left:0; width:100%; } ' +
+						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftColWidth - 20) + 'px;' +
+												  ' width:' + contentWidth + 'px; margin-right:400px; height:' + $(document).height() + 'px; }' +
+						selectors.streamContent + ' > div { width:100% ; }' +
+						selectors.streamContent + ' > div:first-child > div { width:100%; }' +
+						selectors.streamContent + ' > div:first-child > div > div { width:100%; }' +
+						selectors.streamRightCol + ' { ' + (Config.get('fixedNav') == 'all' ? '' : 'position:absolute; top:0;') + ' right:20px; }' +
+
+						selectors.profile + ', ' + selectors.profileContent + ' { width:' + profileWidth + 'px !important; }' +
+						selectors.profile + ' > div { width:' + profileWidth + 'px !important; }' +
+						selectors.profile + ' > div > div { width:' + profileWidth + 'px !important; }' +
+						selectors.profile + ' > div > div > div { ' + profileWidth + 'px !important; }' +
 						
-						// center content
-						contentCol + ' { width:' + contentWidth  + 'px; }' +
-						contentCol + ' { margin-left:188px; }' +
-						contentCol + '.a-p-M-T-gi-xc { display:block; }'+
-				
-						// center content padding
-						contentCol + ' > div { width:' + contentWidth  + 'px; float:left; }' +
-				
-						// center content elements
-						contentCol + ' .a-f-n-A, #contentPane .a-f-p { width:100%; }' +
-				
-						contentCol + ' .n-ci, ' + contentCol + ' .v-u-y-m { margin-right:40px; }' +
-						// content margin in notifications
-						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc { margin-left:188px !important; }' +
-				
-						// post view content column
-						'#contentPane.a-p-M-T.a-p-M-T-hk-xc { width:100%; }' +
-				
-						// profile view content column
-						'#contentPane .vcard { width:' + profileWidth + 'px; }' +
-						'#contentPane .vcard > div:first-child { width:' + profileWidth + 'px !important; }' +
 						
-						// notifications view (click "Notifications" at the bottom of the list in the left column)
-						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc { width:' + ($(document).width() - leftColWidth - 25) + 'px !important; }' +
-						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc .MJI2hd { width:100%; }' +
-						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc .a-b-l-C-ka { width:100%; padding:0; }' +
-						'#contentPane.a-p-M-T.a-p-M-T-Gp-xc .a-b-l-C-Vb { margin:20px; }' +
-						
-						// incomming view 
-						
-				
-						// right column
-						rightColSelector + ' { float:right; padding-right:10px; }' +
-				
-						// photos
-						'#contentPane > div[token*="photos"], #contentPane .a-g-IPJ4If { padding-left:210px; }' +	
-						'#contentPane .a-g-kmrBZe { padding:0; }'
+						selectors.streamNotificationCol + ' { width:' + notificationWidth + 'px; }' +
+						selectors.streamNotificationCol + ' > div:first-child { width:100%; }' +
+						selectors.streamNotificationCol + ' > div:first-child > div { width:100%; }' +
+						selectors.streamNotificationCol + ' > div:first-child > div > div { width:100% }' +
+						selectors.streamNotificationCol + ' > div:first-child > div > div > div { width:100%; }' +
+						selectors.streamNotificationCol + ' > div:first-child > div > div > div > div { width:95%; }' +
+						selectors.incomingNotice + ' { width:100%; padding:12px 0; }' +
+						selectors.incomingNotice + ' > span:first-child { margin-right:21px; }' +	// close incoming notice X
+						selectors.incomingNotice + ' > span:first-child + div { margin-left:21px; margin-right:21px; }' +	// "# new people are sharing with you!"
+						selectors.incomingNotice + ' > span:first-child + div + div { margin-left:21px; }' +	// first new share avatar
+						selectors.incomingNotice + ' > .a-gb-wC.a-c-Ir { margin-left:21px; margin-right:21px; }' +	// "View their posts incoming >"
+						selectors.incomingNoticeAvatar + ' { width:32px !important; }' +	// first new share avatar
+						selectors.incomingNoticeNumMore + ' { width:100px !important; }' +	// first new share avatar
+						selectors.streamShareWrapper + ' { width:' + (contentWidth - 40) + 'px !important; }' +
+						selectors.sparksSearchButton + ', ' + selectors.sparksAddInterestButton + ' { width:50px !important; }' +
+						selectors.sparksAddInterestButton + ' + span { position:relative; top:-25px;}' +
+						selectors.footer + ' { display:none; }' +
+						''
 					);
 				}
 			}
@@ -435,30 +491,32 @@ function GTweaks() {
 			init: function() {
 				if(Config.get('inlinePlusShare')) {
 					self.addStyle(
-							postSelector + ' span.a-Ja-h.a-b-f-i-ha-pe.a-f-i-ha-pe { margin-left:.5em; }' +
-							postSelector + ' span.d-h.a-b-f-i-Zd-h { margin-right:.5em; }'
+							selectors.postShareButton + ', ' + selectors.postPlusOneButton + ' { margin-right:.5em; }'
 					);
 					self.addPolling(self.features.inlinePlusShare.processPosts);
 				}
 			},
 			processPosts:function() {
-				$(postSelector + ' .a-b-f-i-Hg-Uf.a-f-i-Hg-Uf').each(function() {
-					// plusses
-					$('.a-f-i-ha', this).each(function() {
-						var plusses = $('span.a-Ja-h.a-b-f-i-ha-pe.a-f-i-ha-pe', this);
-						$(plusOnePostButtonSelector, $(this).parent().parent()).after(plusses);
-						$(this).remove();
+				$(selectors.post).each(function() {
+					var post = this;
+					$(selectors.postPlussesAndShares, post).each(function() {
+						// plusses
+						$(selectors.postPlussesWrapper, this).each(function() {
+							$(this).css('border', '2px solid green');
+							$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this).parent());
+							$(this).remove();
+						});
+						// shares
+						$(selectors.postSharesWrapper, this).each(function() {
+							var shares = $(selectors.postShares, this);
+							$(selectors.postShareButton, post).after(shares);
+							$(selectors.postShareButton, post).after('(');
+							$(shares).after(')');
+							$(shares).html($(shares).html().replace(/[^\d]/g, ''));
+							$(this).remove();
+						});
+						if($('*', this).size() == 0) $(this).remove();
 					});
-					// shares
-					$('.a-f-i-Hg', this).each(function() {
-						var shares = $('span.d-h.FdmHNd', this);
-						$('span.d-h.a-b-f-i-Zd-h', $(this).parent().parent()).after(shares);
-						$('span.d-h.a-b-f-i-Zd-h', $(this).parent().parent()).after('(');
-						$(shares).after(')');
-						$(shares).html($(shares).html().replace(/[^\d]/g, ''));
-						$(this).remove();
-					});
-					if($('*', this).size() == 0) $(this).remove();
 				});
 			}
 		},
@@ -589,10 +647,12 @@ function GTweaks() {
 			init: function() {
 				if(Config.get('comments')) {
 					self.addStyle(
-							postSelector + ' .bcGTweaksNumComments { margin-left:.5em; cursor:pointer; }' +
+							selectors.post + ' .bcGTweaksNumComments { margin-left:.5em; cursor:pointer; }' +
 							'.bcGTweaksNumComments:hover { text-decoration:underline; }' +
-							postSelector + ' .a-b-f-i-Xb.a-f-i-Xb { height:0; overflow:hidden; visibility:hidden; }' +
-							postSelector + ' .a-b-f-i-Xb.a-f-i-Xb + div { display:none; }'
+							selectors.post + ' .a-b-f-i-Xb.a-f-i-Xb { height:0; overflow:hidden; visibility:hidden; }' +
+							selectors.post + ' .a-b-f-i-Xb.a-f-i-Xb + div { display:none; }' +
+							'.bcGPlusTwCollapseComments { cursor:pointer; height:20px; border:1px solid #ccc; background:#FBFBFB url(https://lh5.googleusercontent.com/-rHmDn0yOCqw/TjxKkh6qsnI/AAAAAAAAAVs/IXdBYIlby2k/bullet-arrow-up-icon.png) center no-repeat; margin-bottom:10px; }' +
+							'.bcGPlusTwCollapseComments:hover { background-color:#eee; }'
 					);
 					self.addPolling(self.features.comments.processPosts);
 				}
@@ -602,57 +662,69 @@ function GTweaks() {
 					if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
 						$(_comments).css('height', 'auto');
 						$(_comments).css('visibility', 'visible');
+						
 						// only show "add a comment" box at the end of comments if editor not open
-						if($('.a-b-f-i-Pb-W-t.a-f-i-Pb-W-t', _comments).size() == 0) {
+						if($('.editable', _comments).size() == 0) {
 							$(_comments).next().show();
 						}
 					}
 				}
 				function hideComments(_comments) {
 					$(_comments).css('height', '0');
+					$(_comments).css('overflow', 'hidden');
 					$(_comments).css('visibility', 'hidden');
 					$(_comments).next().hide();
 				}
-				
-				$(postSelector + ' .a-b-f-i-Xb.a-f-i-Xb').each(function() {
-					var _comments = this;
-					if($('.bcGTweaksNumComments', $(this).parent().parent()).size() == 0) {
-						var commentsOld = $('.a-f-i-J7CxO.a-b-f-i-cf-W-xb span.d-h.a-b-f-i-gc-cf-Xb-h', this);
-						var numOld = commentsOld.html() ? parseInt(commentsOld.html().replace(/[^\d]/g, '')) : 0;
-						var numNew = $('.a-f-i-W-r', _comments).size();
-						var commentsMore = $('.d-h.a-b-f-i-gc-Sb-Xb-h', _comments);
-						var numMore = commentsMore.html() ? parseInt(commentsMore.html().replace(/[^\d]/g, '')) : 0;
-						var numTotal = numOld + numNew + numMore;
-						if(numTotal > 0) {
-							var commentsButton = document.createElement('span');
-							commentsButton.className = 'bcGTweaksNumComments';
-							commentsButton.innerHTML = '(' + numTotal + ')';
-							var postComment = $('span.d-h.a-b-f-i-W-h', $(this).parent().parent());
-							postComment.after(commentsButton);
-							postComment.click(function() {
-								showComments(_comments);
-							});
-							function toggleComments() {
+				$(selectors.post).each(function() {
+					var post = this;
+					$(selectors.postCommentsWrapper, post).each(function() {
+						var _comments = this;
+						function getNumComments() {
+							var commentsOld = $(selectors.postCommentsOldButton, _comments);
+							var numOld = commentsOld.html() ? parseInt(commentsOld.html().replace(/[^\d]/g, '')) : 0;
+							var numNew = $(selectors.postComment, _comments).size();
+							var commentsMore = $(selectors.postCommentsMoreButton, _comments);
+							var numMore = commentsMore.html() ? parseInt(commentsMore.html().replace(/[^\d]/g, '')) : 0;
+							return numOld + numNew + numMore;
+						}
+						numTotal = getNumComments();
+						if($('.bcGTweaksNumComments', post).size() == 0) {
+							if(numTotal > 0) {
+								var commentsButton = document.createElement('span');
+								commentsButton.className = 'bcGTweaksNumComments';
+								commentsButton.innerHTML = '(' + numTotal + ')';
+								var postComment = $(selectors.postCommentButton, $(this).parent().parent());
+								postComment.after(commentsButton);
+								postComment.click(function() {
+									showComments(_comments);
+								});
+								function toggleComments() {
 									if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
 										showComments(_comments);
 									} else {
 										hideComments(_comments);
 									}
+								}
+								$(commentsButton).click(toggleComments);
+								$(_comments).append('<div class="bcGPlusTwCollapseComments" title="Collapse comments">&nbsp;</div>');
+								$('.bcGPlusTwCollapseComments', _comments).click(toggleComments);
+								hideComments(_comments);
+							} else {
+								showComments(_comments);
+								$(_comments).next().hide();
 							}
-							$(commentsButton).click(toggleComments);
 						} else {
-							showComments(_comments);
-							$(_comments).next().hide();
+							var oldNum = parseInt($('.bcGTweaksNumComments', post).text().replace(/[^\d]/g, ''));
+							if(numTotal != oldNum) {
+								$('.bcGTweaksNumComments', post).html('(' + numTotal + ')');
+								if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+									$(_comments).next().hide(); // hide the "add comments" box
+								}
+							}
 						}
-					}
-					/*
-					$('span.d-h.a-b-f-i-Zd-h', $(this).parent().parent()).after('(');
-					$(comments).after(')');
-					$(comments).html($(comments).html().replace(/[^\d]/g, ''));
-					$(this).remove();
-					*/
+					});
+					
 				});
-				
 			}
 		},
 		mention: {
@@ -669,7 +741,7 @@ function GTweaks() {
 				}
 			},
 			processPosts: function() {
-				$(postSelector + ' ' + profileLinkSelector).each(function() {
+				$(selectors.post + ' ' + profileLinkSelector).each(function() {
 					var link = this;
 					if(link.rel != 'bcGTweakEzMntn' && $('img', link).size() == 0) {
 						link.rel = 'bcGTweakEzMntn';
@@ -760,28 +832,31 @@ function GTweaks() {
 						'position:absolute; right:50px; top:11px; border:1px solid #aaa; border-radius:2px; }' +
 						'.bcGTweaksMute:hover { opacity:1;' +
 							'background-image:url(https://lh4.googleusercontent.com/-5NYOXadhJOs/Thw5O1SYBoI/AAAAAAAAAIs/zOvmkFAcrks/ound_mute.png); background-color:#eee;' +
-						'}'
+						'}' +
+						selectors.incomingPostedByMutePost + ' { display:none; }' + 
+						selectors.incomingPostedBy + ' + .bcGTweaksMute { top:26px; }' +
+						selectors.incomingPostedByAddToCircles + ' { margin-right:55px; }'
 					);
 					self.addPolling(self.features.muteButton.processPosts);
 				}
 			},
 			processPosts: function() {
 				try {
-					$('span[role="button"].d-h.a-f-i-Ia-D-h.a-b-f-i-Ia-D-h').each(function() {
+					$(selectors.postButton).each(function() {
 						try {
-							if($('.bcGTweaksMute', $(this).parent()).size() == 0 && $('.a-f-i-Jf-Om.a-b-f-i-Jf-Om', $(this).parent()).size() == 0) {
+							if($('.bcGTweaksMute', $(this).parent()).size() == 0) {
 								var _this = this;
 								setTimeout(function() {
 									var m = document.createElement('div');
 									m.className = 'bcGTweaksMute';
 									m.innerHTML = '&nbsp;';
 									m.style.cursor = 'pointer';
-									var mb = $('.a-b-f-i-Fb-C', $(_this).parent().parent().next())[0];
+									var mb = $(selectors.postMuteButton, $(_this).parent().parent().next())[0];
 									if(mb) {
 										$(_this).before(m);
 										m.title = $(mb).text();
 										$(m).click(function() {
-											var mb = $('.a-b-f-i-Fb-C', $(this).parent().parent().next())[0];
+											var mb = $(selectors.postMuteButton, $(this).parent().parent().next())[0];
 											if(mb) simulateClick(mb);
 										});
 									}
@@ -801,12 +876,12 @@ function GTweaks() {
 						self.addPolling(self.features.muteNotices.fadeNewNotices);
 						break;
 					case 'hide':
-						self.addStyle(self.selectors.muteNotice + ' { display:none !important; }');
+						self.addStyle(selectors.muteNotice + ' { display:none !important; }');
 						break;
 				}
 			},
 			fadeNewNotices: function() {
-				$(self.selectors.muteNotice).each(function() {
+				$(selectors.muteNotice).each(function() {
 					var _this = this;
 					setTimeout(function() {
 						$(_this).fadeOut(1000, function() {
@@ -1131,14 +1206,15 @@ if(!document.location.toString().match(/frame/)) {
 	
 	
 	
-	if(Config.get('hideWelcomeLink')) css += leftColSelector + ' .a-b-la-A h2 + a, ' + leftColSelector + ' .a-b-la-A h2 + a + div { display:none; }';
-	if(Config.get('hideChatRoster')) css += '#oz-chat-roster { display:none !important; }';
-	if(Config.get('hideSendFeedback')) css += 'a.a-eo-eg[href*="forum"] { display:none !important; }';
+	if(Config.get('hideIncomingNotice')) css += selectors.incomingNotice + ' { display:none; }';
+	if(Config.get('hideWelcomeLink')) css += selectors.welcomeLink + ', ' + selectors.welcomeLink + ' + div { display:none; }';
+	if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
+	if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 	if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
 	
 	// right column
 	if(Config.get('hideRightCol')) css += rightColSelector + ' { display:none; }';
-	if(Config.get('hideSuggestions')) css += suggestionsSelector + ' { display:none; }';
+	if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
 	if(Config.get('hideGoMobile')) css += rightColSelector + ' .a-kh-Ae div:first-child + div + div + div { display:none; }';
 	if(Config.get('hideSendInvites')) css += rightColSelector + ' .a-kh-Ae div:first-child + div + div + div + div { display:none; }';
 	
