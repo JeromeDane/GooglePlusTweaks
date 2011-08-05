@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.021
+// @version        0.022
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,7 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.022 Fixed circles editor not visible when using full width
 // @history        0.021 Fixes to handle change in Google Plus code
 // @history        0.021 Fixed stream not jumping to top when clicking stream links with fixed navigation
 // @history        0.021 Added ability to hide notice of new people sharing with you
@@ -203,7 +204,7 @@ function GTweaks() {
 	this.css = '';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.021;
+	this.version = 0.022;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -451,7 +452,7 @@ function GTweaks() {
 						selectors.widthRestrictor + ' { width:100% !important; }' +
 							
 						selectors.contentPane + ' { height:100%; }' +
-						selectors.stream + ' { position:absolute; left:0; width:100%; } ' +
+						selectors.stream + ' { width:100%; } ' +
 						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftColWidth - 20) + 'px;' +
 												  ' width:' + contentWidth + 'px; margin-right:400px; height:' + $(document).height() + 'px; }' +
 						selectors.streamContent + ' > div { width:100% ; }' +
