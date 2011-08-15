@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.022
+// @version        0.024
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,10 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.024 Easy mentions enabled by default once again 
+// @history        0.024 Fixed easy mentions not linking to profiles in comments 
+// @history        0.024 Fixed hide right column, hide invites, and hide go mobile 
+// @history        0.023 Fixed easy mentions and simplified its code 
 // @history        0.022 Fixed circles editor not visible when using full width
 // @history        0.021 Fixes to handle change in Google Plus code
 // @history        0.021 Fixed stream not jumping to top when clicking stream links with fixed navigation
@@ -116,6 +120,8 @@ selectors.welcomeLink = selectors.streamLeftCol + ' h2 + a.d-k.a-c-k-eb.a-mb-k.a
 selectors.streamContent = selectors.stream + ' .a-m-K-S.a-m-K-S-Rh-wb'
 selectors.streamRightCol = selectors.stream + ' .a-c-qC-S.a-qC-S.d-q-p';
 selectors.streamRightColSuggestions = selectors.streamRightCol + ' .T0';
+selectors.streamRightColGoMobile = selectors.streamRightCol + ' .a-Uf-rc > div:nth-child(5) ';
+selectors.streamRightColSendInvites = selectors.streamRightCol + ' .a-Uf-rc > div:nth-child(3) ';
 selectors.streamNotificationCol = selectors.stream + ' .a-m-K-S.a-m-K-S-Kr-wb';
 selectors.streamLinksWrapper = '.a-c-mb-C';
 selectors.streamShareWrapper = selectors.stream + ' .ev.Au + div';
@@ -152,6 +158,7 @@ selectors.leftColPhotos = selectors.photosWrapper + ' > .a-g-lm';
 selectors.footer = '.a-Sa-S.a-c-Sa-S';
 selectors.muteNotice = selectors.post + '.tf.Ek.vp.nk';
 selectors.sendFeedback = 'a.a-Wj-Lh';
+selectors.profileLink = 'a[oid]';
 	
 if(debugSelectors && $(selectors.content).size() > 0) {
 	setTimeout(function() {
@@ -204,7 +211,7 @@ function GTweaks() {
 	this.css = '';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.022;
+	this.version = 0.023;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -237,10 +244,10 @@ function GTweaks() {
 				'default':'none'
 			},
 			"easyMentions":{
-				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Easy Mentions</span>',
+				label:'Easy Mentions',
 				type:'checkbox',
-				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Add links next to names in posts to easily mention them</span>',
-				'default':false
+				description:'Add links next to names in posts to easily mention them',
+				'default':true
 			},
 			"imagePreviews":{
 				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Image Previews</span>',
@@ -742,85 +749,76 @@ function GTweaks() {
 				}
 			},
 			processPosts: function() {
-				$(selectors.post + ' ' + profileLinkSelector).each(function() {
-					var link = this;
-					if(link.rel != 'bcGTweakEzMntn' && $('img', link).size() == 0) {
-						link.rel = 'bcGTweakEzMntn';
-						var mention = document.createElement('span');
-						mention.innerHTML = "+";
-						mention.title = "Mention " + link.innerHTML + " in your comment";
-						mention.className = 'bcGTweakEzMntn';
-						$(mention).click(function() {
-							// find post wrapper
-							var wrapper = null;
-							if($(link).parent().attr('class') == 'a-f-i-go') {	// main post author
-								wrapper = $(link).parent().parent().parent().parent().parent();
-							} else if($(link).prev().attr('class') == 'proflinkPrefix') {	// mention within comment
-								if($(link).parent().parent().attr('class') == 'a-b-f-i-p-R') {
-									wrapper = $(link).parent().parent().parent().parent().parent().parent().parent(); // mention in post
-								} else {
-									wrapper = $(link).parent().parent().parent().parent().parent().parent().parent().parent().parent().parent(); // mention in comment
-								}
-							} else {	// comment author
-								wrapper = $(link).parent().parent().parent().parent().parent().parent().parent().parent();
-							}
-							var addCommentLink = $('span.d-h.a-b-f-i-W-h[role="button"]', wrapper)[0];
-							simulateClick(addCommentLink);
-							
-							function insertMentionRef(name, id) {
-								var editor = $('.v-J-n-m-Gc.editable', wrapper); 
-								if(editor.size() > 0) {
-									
-									if(navigator.userAgent.match(/chrome/i)) {
-										var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="n-QXyXGe" data-token-entity="@' + id + '" oid="' + id + ' +"><span style="color: rgb(136, 136, 136); ">+</span>' + name + ' </button><span>&nbsp;</span>';
+				$(selectors.post).each(function() {
+					var post = this;
+					$(selectors.profileLink, post).each(function() {
+						var link = this;
+						if(link.rel != 'bcGTweakEzMntn' && $('img', link).size() == 0) {
+							link.rel = 'bcGTweakEzMntn';
+							var mention = document.createElement('span');
+							mention.innerHTML = "+";
+							mention.title = "Mention " + link.innerHTML + " in your comment";
+							mention.className = 'bcGTweakEzMntn';
+							$(mention).click(function() {
+								// find post wrapper
+								var addCommentLink = $(selectors.postCommentButton, post)[0];
+								simulateClick(addCommentLink);
+								
+								function insertMentionRef(name, id) {
+									var editor = $('.editable', post); 
+									if(editor.size() > 0) {
+										
+										if(navigator.userAgent.match(/chrome/i)) {
+											var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="h-iA" data-token-entity="@' + id + '" oid="' + id + '"><span style="color: rgb(136, 136, 136); ">+</span>' + name + '</button><span>&nbsp;</span>';
+										} else {
+											var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="h-iA" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
+											
+										}
+										
+										editor.attr('tabfocus', '0');
+										//editor.focus();
+										
+										if($('iframe', editor).size() > 0) {
+											editor = $('iframe', editor).contents().find("body");
+										}
+										
+										var existingHtml = editor.html().replace(/^(\n|\s)*<\/*br>(\n|\s)*/, '').replace(/(\n|\s)*<\/*br>(\n|\s)*$/, '');
+										editor.html(existingHtml +  html);
+										editor.focus();
+										editor.attr('');
+										setTimeout(function() {
+											placeCaretAtEnd( editor[0]);
+										}, 100);
 									} else {
-										var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="n-QXyXGe" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
-
+										setTimeout(function() {
+											insertMentionRef(name, id);
+										}, 200);
 									}
-									
-									editor.attr('tabfocus', '0');
-									//editor.focus();
-
-									if($('iframe', editor).size() > 0) {
-										editor = $('iframe', editor).contents().find("body");
-									}
-									
-									var existingHtml = editor.html().replace(/^(\n|\s)*<\/*br>(\n|\s)*/, '').replace(/(\n|\s)*<\/*br>(\n|\s)*$/, '');
-									editor.html(existingHtml +  html);
-									editor.focus();
-									editor.attr('');
-									setTimeout(function() {
-										placeCaretAtEnd( editor[0]);
-									}, 100);
-								} else {
-									setTimeout(function() {
-										insertMentionRef(name, id);
-									}, 200);
 								}
-							}
-							
-							// http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
-							function placeCaretAtEnd(el) {
-							    el.focus();
-							    if (typeof window.getSelection != "undefined"
-							            && typeof document.createRange != "undefined") {
-							        var range = document.createRange();
-							        range.selectNodeContents(el);
-							        range.collapse(false);
-							        var sel = window.getSelection();
-							        sel.removeAllRanges();
-							        sel.addRange(range);
-							    } else if (typeof document.body.createTextRange != "undefined") {
-							        var textRange = document.body.createTextRange();
-							        textRange.moveToElementText(el);
-							        textRange.collapse(false);
-							        textRange.select();
-							    }
-							}
-							insertMentionRef(link.innerHTML, $(link).attr('oid'));
-						});
-						$(link).after(mention);
-					}
+								
+								// http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
+								function placeCaretAtEnd(el) {
+									el.focus();
+									if (typeof window.getSelection != "undefined"
+										&& typeof document.createRange != "undefined") {
+										var range = document.createRange();
+										range.selectNodeContents(el);
+										range.collapse(false);
+										var sel = window.getSelection();
+										sel.removeAllRanges();
+										sel.addRange(range);
+									} else if (typeof document.body.createTextRange != "undefined") {
+										var textRange = document.body.createTextRange();
+										textRange.moveToElementText(el);
+										textRange.collapse(false);
+										textRange.select();
+									}
+								}
+								insertMentionRef(link.innerHTML, $(link).attr('oid'));
+							});
+							$(link).after(mention);
+						}
+					});
 				});
 			}
 		},
@@ -1214,10 +1212,10 @@ if(!document.location.toString().match(/frame/)) {
 	if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
 	
 	// right column
-	if(Config.get('hideRightCol')) css += rightColSelector + ' { display:none; }';
+	if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
 	if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
-	if(Config.get('hideGoMobile')) css += rightColSelector + ' .a-kh-Ae div:first-child + div + div + div { display:none; }';
-	if(Config.get('hideSendInvites')) css += rightColSelector + ' .a-kh-Ae div:first-child + div + div + div + div { display:none; }';
+	if(Config.get('hideGoMobile')) css += selectors.streamRightColGoMobile + ' { display:none; }';
+	if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
 	
 	
 	// implement CSS
