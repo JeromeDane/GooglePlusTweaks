@@ -37,6 +37,7 @@
 // @history        0.026 Changed primary selector method to relative rather than relying on constantly changing class names  
 // @history        0.026 Greatly improved stability and simplicity of full width code  
 // @history        0.026 Fixed full width of stream when hiding entire right column
+// @history        0.026 Removed dynamic external Flattr script inclusion to increase security. Used simple link instead.
 // @history        0.025 Yet another massive update of classes to fix G+ DOM changes  
 // @history        0.025 Pressing "M" on the keyboard now mutes the current post if mute button is enabled  
 // @history        0.025 Pressing "C" on the keyboard now toggled comments if toggle comments is enabled  
@@ -249,10 +250,8 @@ function eventIsFromTyping(e) {
 function GTweaks() {
 	var self = this;
 	this.css = '';
-	this.donateButtonsHtml = '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Donate through PayPal"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" /></a> &nbsp; ' +
-		'<a class="FlattrButton" style="display:none;" rev="flattr;button:compact;" href="https://chrome.google.com/webstore/detail/ldhcojnagiekommchjbokpofakjeknme"></a>' +
-		'<noscript><a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank">' +
-		'<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></noscript>';
+	this.donateButtonsHtml = '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Donate through PayPal to support Google+ Tweaks"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" /></a> &nbsp; ' +
+		'<a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr Google+ Tweaks" title="Flattr this" border="0" /></a>';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
 	this.version = 0.026;
@@ -450,9 +449,7 @@ function GTweaks() {
 				
 				function fixGbar(height) {
 					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; }');
-					if(!navigator.userAgent.match(/chrome/i)) {
-						$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
-					}
+					$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
 				}
 				switch(Config.get('fixedNav')) {
 					case 'gBar':
@@ -1122,14 +1119,6 @@ function GTweaks() {
  				'<li class="gbkc gbmtc"><a class="gbmt" href="javascript:void(0)" id="bcGTweaksOptLnk">Google+ tweaks</a></li>'
  		);
  		$('#bcGTweaksOptLnk').click(function() {
- 			
- 			// flattr button
-			var s = document.createElement("script"), 
-				t = document.getElementsByTagName("script")[0];
-			s.type = "text/javascript";
-			s.async = true;
-			s.src = "http://api.flattr.com/js/0.6/load.js?mode=auto";
-			t.parentNode.insertBefore(s, t);
 			
  			Config.open();
  			$('.ui-dialog').css('top', '100px');
