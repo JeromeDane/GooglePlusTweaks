@@ -525,7 +525,7 @@ function GTweaks() {
 						// stream title and share wrapper margins
 						s.streamContent + ' > div:first-child > div:first-child > span { display:block; padding:15px 20px 10px 0; }' +
 						s.streamShareWrapper + ' { width:100% !important; }' +
-						s.streamShareWrapper + ' > div:first-child  { margin:20px; }' +
+						s.streamShareWrapper + ' > div:first-child  { margin:0 20px; }' +
 						
 						// profile
 						s.profile + ', ' +  s.profileContent + ' { width:' + profileWidth +'px !important; }' +
