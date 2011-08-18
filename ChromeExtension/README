@@ -1,11 +1,11 @@
-This is code for the Chrome extension version of the script. To update it,
-copy the latest userscript.js from http://userscripts.org/scripts/show/106166
-to includes/userscript.js and update manifest.json with the latest version number.
+This is code for the Chrome extension version of the script. 
+
+The main script is /ChromeExtension/includes/userscript.js
 
 License: Creative Commons Attribution 3.0 Unported License 
          http://creativecommons.org/licenses/by/3.0/
 
-Copyright (c) 2011 Jerome Dane
+Copyright (c) 2011 Jerome Dane (http://profiles.google.com/JeromeDane)
 
 Permission is hereby granted, free of charge, to any person obtaining 
 a copy of this software and associated documentation files (the "Software"), 

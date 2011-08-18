@@ -2,10 +2,12 @@
 // @name           Script Options
 // @description    Adds a configurable options dialogue to user scripts
 // @author         Jerome Dane
-// @version        0.003
+// @version        0.004
 //
 // @website        http://userscripts.org/scripts/show/106223
 //
+// @history        0.004 Changed "Save & Reload Page" button text to "Save & Reload"
+// @history        0.004 Added optional Config.footer property to insert HTML into the footer of the dialog
 // @history        0.003 Added 'select' option type
 // @history        0.002 Now fully functional, but only supports 'html' and 'checkbox' types
 // @history        0.001 Uploaded to userscripts.org as an empty placeholder. No code yet.
@@ -26,7 +28,7 @@ Config = {
 	lang:{
 		'en':{
 			Cancel:'Cancel',
-			Save:'Save & Reload Page',
+			Save:'Save & Reload',
 			Options:'Options'
 		}
 	},
@@ -115,10 +117,18 @@ Config = {
 			
 			Config.dialogConfig.closeText = Config.getText('Cancel');
 			Config.dialogConfig.buttons = Config.buttons;
+			
+			
+			
 		}
 		try {	// suppress any stupid errors so we can keep going
 			$(Config.dialog).dialog(Config.dialogConfig);
-		} catch(e) {}
+		} catch(e) { }
+		// show footer text
+		if(typeof(Config.footer) != 'undefined') {
+			$('.ui-dialog-buttonpane').css('position', 'relative');
+			$('.ui-dialog-buttonpane').append('<table style="position:absolute; top:0; left:10px; width:330px;"><tr valign="middle"><td style="height:45px;">' + Config.footer + '</tr></tr></table>');
+		}
 		// implement option tabs
 		try {
 			$("#bcScriptOptionContent" + Config._guid).tabs();

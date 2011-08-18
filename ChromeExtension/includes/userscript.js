@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.024
+// @version        0.026
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,22 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.026 Fixes for another G+ DOM change  
+// @history        0.026 Changed primary selector method to relative rather than relying on constantly changing class names  
+// @history        0.026 Greatly improved stability and simplicity of full width code  
+// @history        0.026 Fixed full width of stream when hiding entire right column
+// @history        0.025 Yet another massive update of classes to fix G+ DOM changes  
+// @history        0.025 Pressing "M" on the keyboard now mutes the current post if mute button is enabled  
+// @history        0.025 Pressing "C" on the keyboard now toggled comments if toggle comments is enabled  
+// @history        0.025 The document will now scroll back to the top of a post when collapsing long comment threads  
+// @history        0.025 Added readability tweak (enabled by default)  
+// @history        0.025 Fixed "add comment" box flickering when new comments are added while collapsed
+// @history        0.025 Full width and fixed navigation now apply to games section  
+// @history        0.025 Fixed options dialog showing up under bad when using fixed navigation  
+// @history        0.025 Fixed image for most images  
+// @history        0.025 Changed default for image previews to .5 second delay instead of none  
+// @history        0.025 Updated info in about tab in options 
+// @history        0.025 Moved donate button to the footer of the options dailog and added Flattr button   
 // @history        0.024 Easy mentions enabled by default once again 
 // @history        0.024 Fixed easy mentions not linking to profiles in comments 
 // @history        0.024 Fixed hide right column, hide invites, and hide go mobile 
@@ -105,70 +121,96 @@
 // ==/UserScript==
 
 var debugSelectors = false;
+var debugAlign = 'right';		// 'left' or 'right'
 
 var selectors = {
 	content: '#content',
 	contentPane: '#contentPane',
 	googleBar: '#gb',
-	toolBar: '.a-aa-S.a-c-aa-S'
+	toolBar: '#notify-widget-pane + div + div + div'
 };
-selectors.widthRestrictor = '.wy';
-selectors.chatRoster = '#oz-chat-roster';
-selectors.stream = selectors.content + ' .a-m-C-S.a-C.a-m-C-wb-Qb'
-selectors.streamLeftCol = selectors.stream + ' .a-m-mb-S.d-q-p.a-c-m-mb-S';
-selectors.welcomeLink = selectors.streamLeftCol + ' h2 + a.d-k.a-c-k-eb.a-mb-k.a-mb-B7';
-selectors.streamContent = selectors.stream + ' .a-m-K-S.a-m-K-S-Rh-wb'
-selectors.streamRightCol = selectors.stream + ' .a-c-qC-S.a-qC-S.d-q-p';
-selectors.streamRightColSuggestions = selectors.streamRightCol + ' .T0';
-selectors.streamRightColGoMobile = selectors.streamRightCol + ' .a-Uf-rc > div:nth-child(5) ';
-selectors.streamRightColSendInvites = selectors.streamRightCol + ' .a-Uf-rc > div:nth-child(3) ';
-selectors.streamNotificationCol = selectors.stream + ' .a-m-K-S.a-m-K-S-Kr-wb';
-selectors.streamLinksWrapper = '.a-c-mb-C';
-selectors.streamShareWrapper = selectors.stream + ' .ev.Au + div';
-selectors.incomingNotice = '.a-gb-C.a-c-gb-C';
-selectors.incomingNoticeAvatar = selectors.incomingNotice + ' .d-q-p.a-gb-xC';
-selectors.incomingNoticeNumMore = selectors.incomingNotice + ' .d-q-p.a-gb-BA';
-selectors.incomingPostedBy = selectors.contentPane + ' .ov.SD';
-selectors.incomingPostedByAddToCircles = selectors.incomingPostedBy + ' .hr.uz.d-q-p';
-selectors.incomingPostedByMutePost = 'span.d-k.ir.xz';
-selectors.sparksStream = '.a-m-K-S.a-m-K-S-Kr-wb';
-selectors.sparksSearchButton = selectors.sparksStream + ' .d-q-p.j-e.j-e-Y.l2.e1';
-selectors.sparksAddInterestButton = selectors.sparksStream + ' .d-q-p.j-e.j-e-Y.b1.i2';
-selectors.profile = selectors.content + ' .a-m-K-S.a-m-K-S-Tf-wb';
-selectors.profileContent = selectors.profile + ' .a-c-b-m-wc.a-b-m-wc'; 
-selectors.profileLeftCol = selectors.profile + ' .a-c-b-Fa-wc.a-b-Fa-wc';
-selectors.post = 'div[id^="update"]';
-selectors.postCommentsWrapper = '.Ol.iv';
-selectors.postComment = '.Ly.Tk';
-selectors.postCommentButton = '.d-k.wf';
-selectors.postCommentsOld = '.My.al';
-selectors.postCommentsMoreButton = '.d-k.Ck';
-selectors.postCommentsOldButton = '.d-k.Dk[role="button"]';
-selectors.postButton = selectors.post + ' span.d-k.Jt.Oi';
-selectors.postPlussesAndShares = ' .dl.pz';
-selectors.postPlussesWrapper = ' .lv';
-selectors.postPlusses = ' .PD.zp.d-q-p.Zf';
-selectors.postPlusOneButton =  ' .Jn button';
-selectors.postSharesWrapper = ' .mv';
-selectors.postShareButton = 'span.d-k.cl[role="button"]';
-selectors.postShares = ' span.d-k.gr';
-selectors.postMuteButton = '.a-Y-k.d-V.a-Y-k-ye.Sl.Ki';
-selectors.photosWrapper = '.a-g-ra-K.a-m-K.Te-K[token="photos"]';
-selectors.leftColPhotos = selectors.photosWrapper + ' > .a-g-lm';
-selectors.footer = '.a-Sa-S.a-c-Sa-S';
-selectors.muteNotice = selectors.post + '.tf.Ek.vp.nk';
-selectors.sendFeedback = 'a.a-Wj-Lh';
-selectors.profileLink = 'a[oid]';
+var s = selectors;
+// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
+s.widthRestrictor = '.fC';				
+s.chatRoster = '#oz-chat-roster';
+
+var dynamicSelectors = {};
+
+s.postCommentEditorMention = 'h-kD';
+
+s.gamesWrapper = s.content + ' .d7';
+	s.gamesLeftCol = s.gamesWrapper + ' .vZ';
+	s.gamesContent = s.gamesWrapper + ' .PP';
+	s.gamesStream = s.gamesContent + ' .BZ';
+	s.gamesAllGamesWrapper = s.gamesContent + ' .rZ';
+	s.gamesAllGamesGameWrapper = s.gamesAllGamesWrapper + ' .b7';
+s.stream = s.content + ' > div:first-child';
+	s.streamLeftCol = s.stream + ' > div:first-child';
+	s.streamContent = s.stream + ' .a-n-E-M-eh-tb';				// #contentPane *class only* when in stream view (don't include ID)
+		s.streamShareWrapper = '.h-ZA-da-o';
+		s.streamIncomingNotice = s.streamContent + ' .a-ra-B.a-e-ra-B';
+	s.streamRightCol = s.streamContent + ' + div'
+		s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
+			s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + a';
+	s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
+		s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
+	s.streamNotificationCol = s.stream + ' .a-n-E-M-Dq-tb';		// When in notifications: #contentPane *class only* > div:first-child
+	s.incomingPostedBy = ' .Ov.GB';
+		s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
+		s.incomingPostedByMutePostButton = s.incomingPostedBy + ' > div:first-child > div:first-child + [role="button"]';
+	s.sparksSearchButton = s.streamNotificationCol + ' .d-q-p.j-e.j-e-Y.l2.e1';
+	s.sparksAddInterestButton = s.streamNotificationCol + ' .b-o-l.g-d.g-d-R.Oba.B9';
+s.profile = s.content + ' .a-n-E-M-He-tb';
+	s.profileContent = s.profile + ' .a-e-b-n-ac.a-b-n-ac'; 
+	s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
+s.post = 'div[id^="update"]';
+	s.postSelected = selectors.post + '.ze.sj.aj';		// you just have to figure out what class they're using
+	dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
+		dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
+		dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
+		dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
+		dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
+			dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
+		dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
+			dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
+	dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
+		dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
+
+		s.postButton = selectors.post + ' > div:first-child > div:first-child > span';
+		s.postMuteButton = '.a-N-j.c-O.a-N-j-Id.ik.Eg';
+		
+		s.postMutedNotice = selectors.post + '.Up.Qj';
+
+s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
+
+s.postImages = 'img[src*="googleusercontent"]';
+s.photosWrapper = '.a-n-E-M.a-n-E-M-Wd-Qb';
+s.photosLeftCol = s.photosWrapper + ' > div:first-child > div:first-child';
+s.photosContent = s.photosWrapper + ' > div:first-child > div:first-child + div';
+s.photosRightCol = s.photosWrapper + ' > div:first-child > div:nth-child(3)';
+s.sendFeedback = 'a[onclick*="appfeedback"]';
+s.profileLink = 'a[oid]';
+s.userContentImages = 'img[src*="googleusercontent.com"]';
 	
 if(debugSelectors && $(selectors.content).size() > 0) {
+	var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
+	var colors = {};
 	setTimeout(function() {
-		var html = '<div id="bcGPTksSelectorDebug" style="position:absolute; top:0; left:0; font-weignt:normal; padding:1em; border:1px solid #000; background:#fff; z-index:99999;">';
+		var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + debugAlign + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
 		html += '</div>';
 		function debugSelectors() {
 			var html = '<p>Selectors Found:</p>';
 			for(var x in selectors) {
-				var numFound = $(selectors[x]).size();
-				html += '<span style="' + (numFound == 0 ? 'color:red;' : '') + '">' + x + ' ' + numFound + '</span><br/>';
+				var elem = $(selectors[x])
+				var numFound = elem.size();
+				// generate a random color to identify the element
+				if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
+				var color = colors[x];
+				elem.css('background', color);
+				elem.attr('title', x);
+				html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
+				
+				
 			}
 			$('#bcGPTksSelectorDebug').html(html);
 		}
@@ -180,18 +222,10 @@ if(debugSelectors && $(selectors.content).size() > 0) {
 
 
 
-var hangoutNoticeAvatarSelector = '.a-f-i-ie-p img[src*="googleusercontent"]';
-var myAvatarSelector = 'img.a-b-c-y-ma.photo';
-var postBodySelector = selectors.post + ' .Ty';
-var postAvatarSelector = selectors.post + ' img.Nt.hm';
-var postMenuSelector = selectors.post + ' .Cp.d-E[role="menu"]';
-
 
 var playVideoIconSelector = '.ea-S-ei';
 
-var postMediaSelector = '#content ' + postBodySelector + ' img[src*="googleusercontent"]';
 var postAddCommentSelector = selectors.post + ' span.d-h.a-b-f-i-W-h[role="button"]';
-var postMenuItemSelector = postMenuSelector + ' div[role="menuitem"]';
 var profileColumnSelector = '.a-b-c-ka-Mc.a-c-ka-Mc'
 var profileLinkSelector = 'a[oid]';
 var rightColSelector = '.a-b-Cs-T.a-Cs-T.d-s-r';
@@ -206,12 +240,22 @@ var previewHeightMax = $(window).height() - 40;
 var previewWidthMax = previewHeightMax;
 var currentPreviewTarget = false;
 
+function eventIsFromTyping(e) {
+	if(e.target.nodeName.match(/input/i)) return true;
+	if(e.target.className.match(/editable/)) return true;
+	return false;
+}
+
 function GTweaks() {
 	var self = this;
 	this.css = '';
+	this.donateButtonsHtml = '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Donate through PayPal"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" /></a> &nbsp; ' +
+		'<a class="FlattrButton" style="display:none;" rev="flattr;button:compact;" href="https://chrome.google.com/webstore/detail/ldhcojnagiekommchjbokpofakjeknme"></a>' +
+		'<noscript><a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank">' +
+		'<img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr this" title="Flattr this" border="0" /></a></noscript>';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.023;
+	this.version = 0.026;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -225,6 +269,18 @@ function GTweaks() {
 				type:'checkbox',
 				description:'View Google+ in the full width of your browser',
 				'default':true
+			},
+			"readability":{
+				label:'Readability',
+				type:'checkbox',
+				description:'Improve readibility by shifting the focus to posts',
+				'default':true
+			},
+			"postPreviews":{
+				label:'Post Previews',
+				type:'checkbox',
+				description:'Show posts as previews. Click or press "T" to expand',
+				'default':false
 			},
 			"muteButton":{
 				label:'Mute Button',
@@ -250,7 +306,7 @@ function GTweaks() {
 				'default':true
 			},
 			"imagePreviews":{
-				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Image Previews</span>',
+				label:'Image Previews',
 				type:'select',
 				options:{
 					'none':'Disabled',
@@ -259,8 +315,8 @@ function GTweaks() {
 					'1000': '1 second delay',
 					'2000': '2 second delay'
 				},
-				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Show image preview on rollover</span>',
-				'default':'none'
+				description:'Show image preview on rollover',
+				'default':'500'
 			},
 			"comments":{
 				label:'Toggle Comments',
@@ -275,9 +331,9 @@ function GTweaks() {
 				'default':true
 			},
 			"thumbsOnly":{
-				label:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Thumbnails Only</span>',
+				label:'Thumbnails Only',
 				type:'checkbox',
-				description:'<span title="Currently broken due to changes in the Google Plus DOM" style="text-decoration:line-through">Force all images in posts to thumbnails</span>',
+				description:'Force all images in posts to thumbnails',
 				'default':false
 			},
 			"fixedNav":{
@@ -337,11 +393,6 @@ function GTweaks() {
 				type:'checkbox',
 				description:'Hide suggestions of people to follow'
 			},
-			"hideGoMobile":{
-				label:'Go Mobile',
-				type:'checkbox',
-				description:'Hide the "Go Mobile" section'
-			},
 			"hideSendInvites":{
 				label:'Send Invites',
 				type:'checkbox',
@@ -351,15 +402,12 @@ function GTweaks() {
 		"About":{
 			'about':{
 				type:'html',
-				text:'<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Show your love for Google+ Tweaks"><img src="https://lh3.googleusercontent.com/-I9688G68QNo/ThpTzbY_xjI/AAAAAAAAAHA/yhD7MXWhvKw/green_100.png" style="float:right;"/></a>' +
+				text:'' +
 					'<p style="margin-top:0;"><strong><a href="http://userscripts.org/scripts/show/106166">' +
-					'Google+ Tweaks</a></strong> v' + self.version + ' by <a href="">Jerome Dane</a></p>' +
+					'Google+ Tweaks</a></strong> v' + self.version + ' by <a href="http://jeromedane.com">Jerome Dane</a></p>' +
 					'<p>Tweaks to the layout and features of Google+</p>' +
 					'<p>This project is maintained as a hobby. All real-life obligations take precedence. Take it or leave it.</p>' +
-					'<p>This is an alpa release, which means it\'s under heavy development. ' +
-						'If you find something wrong or have suggestions, just post a comment in the ' +
-						'<a href="http://userscripts.org/scripts/discuss/106166">discussions</a>. ' +
-						'I will release updates as I can.</p>' +
+					'<p>I don\'t get paid for this, and do all of this in what little free time I have. If you like these tweaks, show your support by buying me a cup of coffee ☺.</p>' +
 					'<p>' +
 						'<a href="https://plus.google.com/107905455800180378660/posts">' +
 							'<img style="display:inline-block; vertical-align:middle;" src="https://lh3.googleusercontent.com/-IvtEWk93sCM/ThitYp1QudI/AAAAAAAAAGY/piLimw2CogM/google_plus_badge_32.png"/>' +
@@ -372,7 +420,6 @@ function GTweaks() {
 	this.selectors = {
 		muteNotice: selectors.post + '.Of.al.zp.Kk',
 		post: '#content div[id^="update"]',
-		postBody: '.a-b-f-S-oa',
 		postMedia: '#content .a-b-f-S-oa img[src*="googleusercontent"]'
 	};
 	this.features = {
@@ -403,46 +450,37 @@ function GTweaks() {
 				
 				function fixGbar(height) {
 					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; }');
-					$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
+					if(!navigator.userAgent.match(/chrome/i)) {
+						$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
+					}
 				}
 				switch(Config.get('fixedNav')) {
 					case 'gBar':
 						fixGbar(30);
 						break;
 					case 'all':
-						fixGbar(90);
+						fixGbar(92);
 						self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
 							selectors.googleBar + ' { z-index:1200; }' +
 							// stream view
 							selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' +
-							selectors.streamRightCol  + ' { position:fixed; top:90px; ' + 
+							selectors.streamRightCol  + ' { position:fixed !important; top:90px; ' + 
 								(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
 							' }' +
 							selectors.streamNotificationCol + ', ' + selectors.streamContent + ' { position:relative; left:' + ($(selectors.streamLeftCol).width() + 20) + 'px; }' +
+							// games view
+							selectors.gamesLeftCol + ' { position:fixed; top:90px; }' +
+							selectors.gamesContent + ' { position:absolute; left:190px; }' +
 							// pictures view
-							selectors.leftColPhotos + ' { position:fixed; top:90px; }' +
+							selectors.photosLeftCol + ' { position:fixed; top:90px; }' +
 							// profile view
 							selectors.profileLeftCol + ' { position:fixed; top:90px; ' + 
 								(Config.get('fullWidth') ? '' : 'left:' + (rightColOffset - 760) + 'px;') +
-							' }'
+							' }' 
 						);
-						// make the doc scroll to the top on left column click
-						$(selectors.streamLeftCol + ' .a-b-la-T').click(function() {
-							$(document).scrollTop(0);
-						});
 						// make the doc scroll to the top on top grey bar button click
 						$(selectors.streamLinksWrapper).click(function() {
 							$(document).scrollTop(0);
-						});
-						// reposition document so current post is in view
-						$(document).keyup(function(e) {
-							switch(e.which.toString()) {
-								case '74': case '75':
-									setTimeout(function() {
-										$(window).scrollTop($(document).scrollTop() - 60);
-									}, 500);
-									break;
-							}
 						});
 						break;
 				}
@@ -451,47 +489,53 @@ function GTweaks() {
 		fullWidth: {
 			init: function() {
 				if(Config.get('fullWidth')) {
-					var leftColWidth = $(selectors.streamLeftCol).width() + 20;
-					var contentWidth = $(window).width() - leftColWidth - $(selectors.streamRightCol).width();
-					var notificationWidth = $(window).width() - leftColWidth - 25;
-					var profileWidth = $(window).width() - $(selectors.profileLeftCol).width() - 235;
+					var s = selectors;
+					//var streamLeftColWidth = $(s.streamLeftCol).width() + 20; alert(streamLeftColWidth);
+					var streamLeftColWidth = 188;
+					//var streamRightColWidth = $(s.streamRightCol).width() + 10; alert(streamRightColWidth);
+					var streamRightColWidth = Config.get('hideRightCol') ? 0 : 205;
+					
+					var streamNotificationWidth = $(window).width() - streamLeftColWidth; 
+					var streamContentWidth = streamNotificationWidth - streamRightColWidth;
+					
+					var contentWidth = $(window).width() - streamLeftColWidth - $(selectors.streamRightCol).width();
+					var notificationWidth = $(window).width() - streamLeftColWidth - 25;
+					
+					var profileLeftColWidth = 232;
+					var profileWidth = $(window).width() - profileLeftColWidth - 5;
+					
+					var gameContentWidth = $(window).width() - 190;
 					self.addStyle(
-						selectors.widthRestrictor + ' { width:100% !important; }' +
-							
-						selectors.contentPane + ' { height:100%; }' +
-						selectors.stream + ' { width:100%; } ' +
-						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftColWidth - 20) + 'px;' +
-												  ' width:' + contentWidth + 'px; margin-right:400px; height:' + $(document).height() + 'px; }' +
-						selectors.streamContent + ' > div { width:100% ; }' +
-						selectors.streamContent + ' > div:first-child > div { width:100%; }' +
-						selectors.streamContent + ' > div:first-child > div > div { width:100%; }' +
-						selectors.streamRightCol + ' { ' + (Config.get('fixedNav') == 'all' ? '' : 'position:absolute; top:0;') + ' right:20px; }' +
-
-						selectors.profile + ', ' + selectors.profileContent + ' { width:' + profileWidth + 'px !important; }' +
-						selectors.profile + ' > div { width:' + profileWidth + 'px !important; }' +
-						selectors.profile + ' > div > div { width:' + profileWidth + 'px !important; }' +
-						selectors.profile + ' > div > div > div { ' + profileWidth + 'px !important; }' +
+						// global and general
+						selectors.stream + ', ' + selectors.content + ', ' + s.widthRestrictor + ' { width:100% !important; }' +
+						selectors.contentPane + ' { width:100%; }' +
+						selectors.contentPane + ' > div { width:100% !important; }' +
+						// all direct discendants of content pane should be 100% with no margins
+						s.contentPane + ' > div:first-child > div { width:100%; margin:0 !important; }' +
 						
+						// stream
+						s.streamLeftCol + ', ' + s.streamNotificationCol + ' { float:left; }' +				
+						s.streamRightCol + ' { position:absolute; right:10px; }' +				
+						s.streamContent + ' { width:' + streamContentWidth + 'px; float:left; }' +
+						s.streamNotificationCol + ' { width:' + streamNotificationWidth + 'px; float:left; }' +
+						// notificatio contents
+						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div { width:100%; margin:0; padding:0; }' +
+						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div > div { margin-left:20px; margin-right:20px; }' +
 						
-						selectors.streamNotificationCol + ' { width:' + notificationWidth + 'px; }' +
-						selectors.streamNotificationCol + ' > div:first-child { width:100%; }' +
-						selectors.streamNotificationCol + ' > div:first-child > div { width:100%; }' +
-						selectors.streamNotificationCol + ' > div:first-child > div > div { width:100% }' +
-						selectors.streamNotificationCol + ' > div:first-child > div > div > div { width:100%; }' +
-						selectors.streamNotificationCol + ' > div:first-child > div > div > div > div { width:95%; }' +
-						selectors.incomingNotice + ' { width:100%; padding:12px 0; }' +
-						selectors.incomingNotice + ' > span:first-child { margin-right:21px; }' +	// close incoming notice X
-						selectors.incomingNotice + ' > span:first-child + div { margin-left:21px; margin-right:21px; }' +	// "# new people are sharing with you!"
-						selectors.incomingNotice + ' > span:first-child + div + div { margin-left:21px; }' +	// first new share avatar
-						selectors.incomingNotice + ' > .a-gb-wC.a-c-Ir { margin-left:21px; margin-right:21px; }' +	// "View their posts incoming >"
-						selectors.incomingNoticeAvatar + ' { width:32px !important; }' +	// first new share avatar
-						selectors.incomingNoticeNumMore + ' { width:100px !important; }' +	// first new share avatar
-						selectors.streamShareWrapper + ' { width:' + (contentWidth - 40) + 'px !important; }' +
-						selectors.sparksSearchButton + ', ' + selectors.sparksAddInterestButton + ' { width:50px !important; }' +
-						selectors.sparksAddInterestButton + ' + span { position:relative; top:-25px;}' +
-						selectors.footer + ' { display:none; }' +
-						''
-					);
+						// stream title and share wrapper margins
+						s.streamContent + ' > div:first-child > div:first-child > span { display:block; padding:15px 20px 10px 0; }' +
+						s.streamShareWrapper + ' { width:100% !important; }' +
+						s.streamShareWrapper + ' > div:first-child  { margin:20px; }' +
+						
+						// profile
+						s.profile + ', ' +  s.profileContent + ' { width:' + profileWidth +'px !important; }' +
+						s.profileContent + ' { margin-left:' + profileLeftColWidth + 'px !important; }' +
+						
+						// photos
+						'#content ' + s.photosLeftCol + ' { width:192px !important; }' +
+						'#content ' + s.photosRightCol + ' { width:180px !important; }' +
+						
+						'');
 				}
 			}
 		},
@@ -499,7 +543,7 @@ function GTweaks() {
 			init: function() {
 				if(Config.get('inlinePlusShare')) {
 					self.addStyle(
-							selectors.postShareButton + ', ' + selectors.postPlusOneButton + ' { margin-right:.5em; }'
+						selectors.postPlusOneButton + ' { margin-right:.5em; }'
 					);
 					self.addPolling(self.features.inlinePlusShare.processPosts);
 				}
@@ -510,15 +554,14 @@ function GTweaks() {
 					$(selectors.postPlussesAndShares, post).each(function() {
 						// plusses
 						$(selectors.postPlussesWrapper, this).each(function() {
-							$(this).css('border', '2px solid green');
-							$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this).parent());
+							$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this));
 							$(this).remove();
 						});
 						// shares
 						$(selectors.postSharesWrapper, this).each(function() {
 							var shares = $(selectors.postShares, this);
 							$(selectors.postShareButton, post).after(shares);
-							$(selectors.postShareButton, post).after('(');
+							$(selectors.postShareButton, post).after(' (');
 							$(shares).after(')');
 							$(shares).html($(shares).html().replace(/[^\d]/g, ''));
 							$(this).remove();
@@ -588,67 +631,59 @@ function GTweaks() {
 						var img = this;
 						if($(img).attr('rel') != 'bcGplusTwImgPrvw') {
 							$(img).attr('rel', 'bcGplusTwImgPrvw');
-							$(img).mouseover(function(e) {
-								self.features.imagePreviews.mousePos = e;
-								self.features.imagePreviews.reposition();
-								currentPreviewTarget = img;
-								setTimeout(function() {
-									if(currentPreviewTarget) {
-										$('.loading', previewDiv).show();
-										$('#bcGPTwksPrvImg').hide();
-										$(previewDiv).fadeIn('fast');
-										var src = currentPreviewTarget.src.replace(/\/w\d+[^\/]+\//, '/w' + previewWidthMax + '/');
-										src = src.replace(/\/s\d+[^\/]+\//, '');
-										src = src.replace(/\/h\d+[^\/]+\//, '/h' + maxHeight + '/');
-										src = src.replace(/sz=\d+/, '');
-										src = src.replace(/resize_h=\d+/, '');
-										src = src.replace(/&$/, '');
-										$('#bcGPTwksPrvImg').load(function() {
-											if(currentPreviewTarget) {
-												function showImage() {
-													$('.loading', previewDiv).hide();
-													$('#bcGPTwksPrvImg').show();
-													self.features.imagePreviews.reposition();
-													self.features.imagePreviews.loaded[src] = true;
+							if($(img).width() < 500 && $(img).height() < 400) {						// no preview for images that are already large
+								$(img).mouseover(function(e) {
+									self.features.imagePreviews.mousePos = e;
+									self.features.imagePreviews.reposition();
+									currentPreviewTarget = img;
+									setTimeout(function() {
+										if(currentPreviewTarget) {
+											$('.loading', previewDiv).show();
+											$('#bcGPTwksPrvImg').hide();
+											$(previewDiv).fadeIn('fast');
+											var src = currentPreviewTarget.src.replace(/\/w\d+[^\/]+\//, '/w' + previewWidthMax + '/');
+											src = src.replace(/\/s\d+[^\/]+\//, '');
+											src = src.replace(/\/h\d+[^\/]+\//, '/h' + maxHeight + '/');
+											src = src.replace(/resize_w=\d+/, '');
+											src = src.replace(/sz=\d+/, '');
+											src = src.replace(/resize_h=\d+/, '');
+											src = src.replace(/&$/, '');
+											$('#bcGPTwksPrvImg').load(function() {
+												if(currentPreviewTarget) {
+													function showImage() {
+														$('.loading', previewDiv).hide();
+														$('#bcGPTwksPrvImg').show();
+														self.features.imagePreviews.reposition();
+														self.features.imagePreviews.loaded[src] = true;
+													}
+													if(typeof(self.features.imagePreviews.loaded[src]) != 'undefined') 
+														showImage();
+													else 
+														setTimeout(showImage, 500);
 												}
-												if(typeof(self.features.imagePreviews.loaded[src]) != 'undefined') 
-													showImage();
-												else 
-													setTimeout(showImage, 500);
-											}
-										});
-										$('img', previewDiv).attr('src', src);
-									}
-								}, parseInt(Config.get('imagePreviews')));
-							});
-							$(img).mouseout(function() {
-								currentPreviewTarget = false;
-								$(previewDiv).fadeOut('fast', function() {
-									$('#bcGPTwksPrvImg').attr('src', '');
+											});
+											$('img', previewDiv).attr('src', src);
+										}
+									}, parseInt(Config.get('imagePreviews')));
 								});
-							});
-							$(img).mousemove(function(e) {
-								self.features.imagePreviews.mousePos = e;
-								currentPreviewTarget = this;
-								self.features.imagePreviews.reposition(e);
-							});
+								$(img).mouseout(function() {
+									currentPreviewTarget = false;
+									$(previewDiv).fadeOut('fast', function() {
+										$('#bcGPTwksPrvImg').attr('src', '');
+									});
+								});
+								$(img).mousemove(function(e) {
+									self.features.imagePreviews.mousePos = e;
+									currentPreviewTarget = this;
+									self.features.imagePreviews.reposition(e);
+								});
+							}
 						}
 					}
 				});
 			},
 			processPosts: function() {
-				self.features.imagePreviews.enableTarget(postMediaSelector);
-				self.features.imagePreviews.enableTarget(postAvatarSelector);
-				self.features.imagePreviews.enableTarget(myAvatarSelector);
-				self.features.imagePreviews.enableTarget(vcardAvatarSelector);
-				self.features.imagePreviews.enableTarget(vcardAvatarInCommonSelector);
-				self.features.imagePreviews.enableTarget(hangoutNoticeAvatarSelector);
-				// notification avatars
-				self.features.imagePreviews.enableTarget('.eJn3s.a-b-l-Z-hd-z.IurX4c');
-				// main profile pics in left column
-				self.features.imagePreviews.enableTarget('.ea-g-Vc-pa-A img.ea-g-Vc-pa');
-				// pictures in profile pages
-				self.features.imagePreviews.enableTarget('.a-c-hb-Qa img.a-b-c-hb-Qa-pa.a-c-hb-Qa-pa');
+				self.features.imagePreviews.enableTarget(selectors.userContentImages);
 			}
 		},
 		comments: {
@@ -657,43 +692,56 @@ function GTweaks() {
 					self.addStyle(
 							selectors.post + ' .bcGTweaksNumComments { margin-left:.5em; cursor:pointer; }' +
 							'.bcGTweaksNumComments:hover { text-decoration:underline; }' +
-							selectors.post + ' .a-b-f-i-Xb.a-f-i-Xb { height:0; overflow:hidden; visibility:hidden; }' +
-							selectors.post + ' .a-b-f-i-Xb.a-f-i-Xb + div { display:none; }' +
 							'.bcGPlusTwCollapseComments { cursor:pointer; height:20px; border:1px solid #ccc; background:#FBFBFB url(https://lh5.googleusercontent.com/-rHmDn0yOCqw/TjxKkh6qsnI/AAAAAAAAAVs/IXdBYIlby2k/bullet-arrow-up-icon.png) center no-repeat; margin-bottom:10px; }' +
-							'.bcGPlusTwCollapseComments:hover { background-color:#eee; }'
+							'.bcGPlusTwCollapseComments:hover { background-color:#eee; }' +
+							'.bcTweaksHiddenComments + div { display: none; }'
 					);
 					self.addPolling(self.features.comments.processPosts);
+					// press "M" to mute the current post
+					$('body').keyup(function(e) {
+						if(!eventIsFromTyping(e)) {
+							switch(e.which.toString()) {
+								case '67':	// "C"
+									var currentPost = $(selectors.postSelected);
+									var numCommentsButton = $('.bcGTweaksNumComments', currentPost);
+									if(numCommentsButton.size() > 0) {
+										simulateClick(numCommentsButton[0]);
+									}
+									break;c
+							}
+						}
+					});
 				}
 			},
 			processPosts: function() {
-				function showComments(_comments) {
-					if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
-						$(_comments).css('height', 'auto');
-						$(_comments).css('visibility', 'visible');
-						
-						// only show "add a comment" box at the end of comments if editor not open
-						if($('.editable', _comments).size() == 0) {
-							$(_comments).next().show();
-						}
-					}
-				}
-				function hideComments(_comments) {
-					$(_comments).css('height', '0');
-					$(_comments).css('overflow', 'hidden');
-					$(_comments).css('visibility', 'hidden');
-					$(_comments).next().hide();
-				}
 				$(selectors.post).each(function() {
 					var post = this;
+					var hasBeenCollapsed = false;
 					$(selectors.postCommentsWrapper, post).each(function() {
 						var _comments = this;
 						function getNumComments() {
-							var commentsOld = $(selectors.postCommentsOldButton, _comments);
-							var numOld = commentsOld.html() ? parseInt(commentsOld.html().replace(/[^\d]/g, '')) : 0;
-							var numNew = $(selectors.postComment, _comments).size();
-							var commentsMore = $(selectors.postCommentsMoreButton, _comments);
-							var numMore = commentsMore.html() ? parseInt(commentsMore.html().replace(/[^\d]/g, '')) : 0;
-							return numOld + numNew + numMore;
+							return ($(selectors.postCommentsNumBar, _comments).text().replace(/[^\d]/g, ''));
+						}
+						function showComments() {
+							if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+								$(_comments).css('height', 'auto');
+								$(_comments).css('visibility', 'visible');
+								
+								_comments.className = _comments.className.replace(/bcTweaksHiddenComments/, '');
+							}
+						}
+						function hideComments() {
+							_comments.className += ' bcTweaksHiddenComments';
+							$(_comments).css('height', '0');
+							$(_comments).css('overflow', 'hidden');
+							$(_comments).css('visibility', 'hidden');
+							// scroll to top of post
+							if(hasBeenCollapsed) {
+								var postTop = $(post).offset().top - 120;
+								//alert(postTop);
+								$(document).scrollTop(postTop);
+							}
+							hasBeenCollapsed = true;
 						}
 						numTotal = getNumComments();
 						if($('.bcGTweaksNumComments', post).size() == 0) {
@@ -719,7 +767,6 @@ function GTweaks() {
 								hideComments(_comments);
 							} else {
 								showComments(_comments);
-								$(_comments).next().hide();
 							}
 						} else {
 							var oldNum = parseInt($('.bcGTweaksNumComments', post).text().replace(/[^\d]/g, ''));
@@ -767,11 +814,12 @@ function GTweaks() {
 								function insertMentionRef(name, id) {
 									var editor = $('.editable', post); 
 									if(editor.size() > 0) {
+										var editorMentionClass = selectors.postCommentEditorMention.replace(/^\./, '');
 										
 										if(navigator.userAgent.match(/chrome/i)) {
-											var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="h-iA" data-token-entity="@' + id + '" oid="' + id + '"><span style="color: rgb(136, 136, 136); ">+</span>' + name + '</button><span>&nbsp;</span>';
+											var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span style="color: rgb(136, 136, 136); ">+</span>' + name + '</button><span>&nbsp;</span>';
 										} else {
-											var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="h-iA" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
+											var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
 											
 										}
 										
@@ -822,6 +870,89 @@ function GTweaks() {
 				});
 			}
 		},
+		postPreviews: {
+			init: function() {
+				if(Config.get('postPreviews')) {
+					self.addStyle(
+						selectors.post + ' { display:none; }' +
+						'.bcTweaksMiniPostCollapsed { display:block !important; padd }' +
+						'.bcTweaksMiniPostExpanded { display:block !important; }' +
+						'.bcTweaksMiniPostCollapsed { display:block !important; padd }' +
+						'.bcTweaksMiniPostCollapsed { height:32px; overflow:hidden; padding:0; position:relative; }' +
+						'.bcTweaksMiniPostCollapsed img { display:none; }' +
+						'.bcTweaksMiniPostCollapsed:hover { border-color:#333 !important; }' +
+						'.bcTweaksMiniPostCollapsed br { display:none; }' +
+						'.bcTweaksMiniPostCollapsed span { margin:0 .5em; }' +
+						'.bcTweaksMiniPostCollapsed * { line-height:32px; background:none; margin:0 !important; padding:0 !important; text-align:left; }' +
+						'.bcTweaksMiniPostCollapsed > div:first-child { width:100%; }' +
+						'.bcTweaksMiniPostCollapsed > div { position:absolute; left:40px; top:0; }' +
+						// post time, public, etc.
+						'.bcTweaksMiniPostCollapsed > div:first-child > div:first-child > h3 + span + a + div > span:first-child + span { display:none !important;  }' +
+						'.bcTweaksMiniPostCollapsed ' + selectors.incomingPostedBy + ' { display:none; }' +
+						'.bcTweaksMiniPostCollapsed .bcTweaksMiniPostCollapse { display:none; }' +
+						'.bcTweaksMiniPostCollapsed .bcGTweakEzMntn{ display:none !important;}' + 
+						'.bcTweaksMiniPostCollapsed .bcGTweaksMute { display:none; }' +
+						// post avatar
+						'.bcTweaksMiniPostCollapsed > div:first-child > div:first-child > h3:first-child + span + a img { display:block !important; height:32px; width:32px; position:absolute; top:0; left:-40px; }' +
+						// post body
+						'.bcTweaksMiniPostCollapsed > div:first-child > div:first-child + div { position:absolute; top:0; left:130px; }' + 
+						'.bcTweaksMiniPostCollapsed ' + selectors.postCommentsMoreButtonWrapper + ' { position:absolute; top:0; right:45px; background:#fff; z-index:3000; }' + 
+						'.bcTweaksMiniPostCollapse { position:absolute; top:0; cursor:pointer; right:0; width:15px; background:#eee; border-left:1px solid #d2d2d2; height:100%; }' +
+					'');
+					self.addPolling(self.features.postPreviews.processPosts);
+					// press "T" to mute the current post
+					$('body').keyup(function(e) {
+						if(!eventIsFromTyping(e)) {
+							switch(e.which.toString()) {
+								case '84':	// "T"
+									var currentPost = $(selectors.postSelected);
+									if(currentPost.size() > 0) {
+										self.features.postPreviews.togglePost(currentPost[0]);
+									}
+									break;
+								case '74':	// "J"
+									var currentPost = $(selectors.postSelected);
+									if(currentPost.size() > 0) {
+										self.features.postPreviews.collapsePost(currentPost[0]);
+									}
+									break;
+							}
+						}
+					});
+				}
+			},
+			processPosts: function() {
+				$(selectors.post).each(function() {
+					var post = this;
+					if(!post.className.match(/bcTweaksMiniPost/)) {
+						post.className += ' bcTweaksMiniPostCollapsed';
+						$(post).click(function() {
+							if(this.className.match(/bcTweaksMiniPostCollapsed/)) {
+								self.features.postPreviews.expandPost(post);
+							}
+						});
+						$(post).append('<div class="bcTweaksMiniPostCollapse" title="Collapse this post">&nbsp;</div>');
+						$('.bcTweaksMiniPostCollapse', post).click(function(e) {
+							e.stopPropagation();
+							self.features.postPreviews.collapsePost(post);
+						});
+					}
+				});
+			},
+			collapsePost:function(post) {
+				post.className = post.className.replace(/bcTweaksMiniPostExpanded/, 'bcTweaksMiniPostCollapsed');
+			},
+			expandPost:function(post) {
+				post.className = post.className.replace(/bcTweaksMiniPostCollapsed/, 'bcTweaksMiniPostExpanded');
+			},
+			togglePost:function(post) {
+				if(post.className.match(/bcTweaksMiniPostCollapsed/)) {
+					self.features.postPreviews.expandPost(post);
+				} else {
+					self.features.postPreviews.collapsePost(post);
+				}
+			}
+		},
 		muteButton: {
 			init: function() {
 				if(Config.get('muteButton')) {
@@ -832,11 +963,26 @@ function GTweaks() {
 						'.bcGTweaksMute:hover { opacity:1;' +
 							'background-image:url(https://lh4.googleusercontent.com/-5NYOXadhJOs/Thw5O1SYBoI/AAAAAAAAAIs/zOvmkFAcrks/ound_mute.png); background-color:#eee;' +
 						'}' +
-						selectors.incomingPostedByMutePost + ' { display:none; }' + 
+						selectors.incomingPostedByMutePostButton + ' { display:none; }' + 
 						selectors.incomingPostedBy + ' + .bcGTweaksMute { top:26px; }' +
 						selectors.incomingPostedByAddToCircles + ' { margin-right:55px; }'
 					);
 					self.addPolling(self.features.muteButton.processPosts);
+					// press "M" to mute the current post
+					$('body').keyup(function(e) {
+						if(!eventIsFromTyping(e)) {
+							switch(e.which.toString()) {
+								case '77':	// "M"
+									var postToMute = $(selectors.postSelected);
+									var muteButton = $(selectors.postMuteButton, postToMute).css('background', 'red');
+									if(muteButton.size() > 0) {
+										simulateClick(muteButton[0]);
+										simulateClick(postToMute.next()[0]);
+									}
+									break;
+							}
+						}
+					});
 				}
 			},
 			processPosts: function() {
@@ -875,12 +1021,12 @@ function GTweaks() {
 						self.addPolling(self.features.muteNotices.fadeNewNotices);
 						break;
 					case 'hide':
-						self.addStyle(selectors.muteNotice + ' { display:none !important; }');
+						self.addStyle(selectors.postMutedNotice + ' { display:none !important; }');
 						break;
 				}
 			},
 			fadeNewNotices: function() {
-				$(selectors.muteNotice).each(function() {
+				$(selectors.postMutedNotice).each(function() {
 					var _this = this;
 					setTimeout(function() {
 						$(_this).fadeOut(1000, function() {
@@ -890,6 +1036,22 @@ function GTweaks() {
 				});
 			}
 		},
+		readability: {
+			init: function() {
+				if(Config.get('readability')) {
+					var bgColor = '#f1f1f1';
+					self.addStyle(
+							'body { background:' + bgColor + '; }' +
+							selectors.toolBar + ' { border-bottom:none; }' +
+							selectors.content + ' { border-top:none; }' +
+							selectors.content + ' > div:first-child { background:' + bgColor + '; }' +
+							selectors.profileContent + ', #contentPane { background:' + bgColor + '; border:none; }' +
+							selectors.post + ' { margin-top:4px; border:1px solid #d2d2d2; border-top:1px solid #d2d2d2 !important; }' +
+							selectors.postSelected + '{ border-color:#cc3333 !important; }'
+					);
+				}
+			}
+		},
 		thumbnailsOnly: {
 			init: function() {
 				if(Config.get('thumbsOnly')) self.addPolling(self.features.thumbnailsOnly.processThumbs);
@@ -897,7 +1059,7 @@ function GTweaks() {
 			processThumbs: function() {
 				var maxHeight = 46;
 				var maxWidth = 62;
-				$(postMediaSelector).each(function() {
+				$(selectors.post + ' ' + selectors.postImages).each(function() {
 					if($(this).height() > maxHeight && $(this).width() > maxHeight) {
 						var parentWrapper = $(this).parent();
 						function shrinkParentWrapper() {
@@ -908,13 +1070,7 @@ function GTweaks() {
 							var file = this.src.match(/[^\/]+$/)[0];	
 							var newSrc = this.src.replace(/[^\/]+\/[^\/]+$/, '') + 'w' + maxWidth + '-h' + maxHeight + '-p/' + file;
 							this.src = newSrc;
-							parentWrapper.next().remove();		// remove next <br>
 							shrinkParentWrapper();
-							var nextWrapper = $(this).parent().next();
-							if($('img', nextWrapper).size() > 0) {
-								nextWrapper.before($(this).parent());
-								$(this).parent().attr('class',  nextWrapper.attr('class')); // get the class of the first thumbnail in the row
-							}
 						} else if($(playVideoIconSelector, parentWrapper).size() == 0) {
 							$(this).css('max-height', maxHeight);
 							$(this).css('max-width', maxWidth);
@@ -927,11 +1083,15 @@ function GTweaks() {
 	};
 	this.construct = function() {
 		Config.scriptName = 'Google+ Tweaks';
+		Config.footer = '<span style="position:relative; top:5px">' + self.donateButtonsHtml + '</span>';
 		Config.options = this.options;
 		self.initFeatures();
 		self.applyStyle();
 		self.startPolling();
 		self.insertOptionsLink();
+		$(selectors.streamShareWrapper).click(function() {
+			typing = true;
+		});
 		return true;
 	};
 	this.addPolling = function(fnct) {
@@ -962,10 +1122,36 @@ function GTweaks() {
  				'<li class="gbkc gbmtc"><a class="gbmt" href="javascript:void(0)" id="bcGTweaksOptLnk">Google+ tweaks</a></li>'
  		);
  		$('#bcGTweaksOptLnk').click(function() {
+ 			
+ 			// flattr button
+			var s = document.createElement("script"), 
+				t = document.getElementsByTagName("script")[0];
+			s.type = "text/javascript";
+			s.async = true;
+			s.src = "http://api.flattr.com/js/0.6/load.js?mode=auto";
+			t.parentNode.insertBefore(s, t);
+			
  			Config.open();
+ 			$('.ui-dialog').css('top', '100px');
+ 			$(document).scrollTop(0);
  		});
- 	}; 	
+ 	}; 
+ 	this.detectElementClass = function(selectorKey, path) {
+ 		var s = selectors;
+ 		// detect missing selector classes
+ 		if(typeof(s[selectorKey]) == 'undefined' || s[selectorKey] == null) {
+ 			var elems = $(path);
+ 			if(elems.size() > 0) {
+ 				s[selectorKey] = '.' + elems.attr('class').replace(/\s+/g, '.');
+ 			}
+ 		}
+ 	};
  	this.startPolling = function() {
+ 		// auto detect any missing class names using relative DOM paths
+ 		for(var x in dynamicSelectors) {
+ 			self.detectElementClass(x, dynamicSelectors[x]);
+ 		}
+ 		// fire feature polls
  		for(var i = 0; i < self.pollFuncions.length; i++) {
  			self.pollFuncions[i]();
  		}
@@ -1205,8 +1391,8 @@ if(!document.location.toString().match(/frame/)) {
 	
 	
 	
-	if(Config.get('hideIncomingNotice')) css += selectors.incomingNotice + ' { display:none; }';
-	if(Config.get('hideWelcomeLink')) css += selectors.welcomeLink + ', ' + selectors.welcomeLink + ' + div { display:none; }';
+	if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
+	if(Config.get('hideWelcomeLink')) css += selectors.streamWelcomeLink + ', ' + selectors.streamWelcomeLink + ' + div { display:none; }';
 	if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 	if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 	if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
@@ -1214,7 +1400,6 @@ if(!document.location.toString().match(/frame/)) {
 	// right column
 	if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
 	if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
-	if(Config.get('hideGoMobile')) css += selectors.streamRightColGoMobile + ' { display:none; }';
 	if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
 	
 	
