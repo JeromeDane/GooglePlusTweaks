@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.026
+// @version        0.030
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,14 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.030 Fixed comments collapsing even when turned off
+// @history        0.030 Fixed easy mentions not linking in comments
+// @history        0.029 Fixed mute button
+// @history        0.029 Fixed left column of photos not staying in place with fixed navigation
+// @history        0.029 Fixed layout of new incoming shares notice when using full width
+// @history        0.028 Implemented agressive auto selector dection to combat DOM and class changes  
+// @history        0.028 Fixed image previews of images across top of profile pages  
+// @history        0.027 Fixed muted posts not hiding correctly  
 // @history        0.026 Fixes for another G+ DOM change  
 // @history        0.026 Changed primary selector method to relative rather than relying on constantly changing class names  
 // @history        0.026 Greatly improved stability and simplicity of full width code  
@@ -121,112 +129,188 @@
 //
 // ==/UserScript==
 
+var version = 0.30;
+
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
 
-var selectors = {
-	content: '#content',
-	contentPane: '#contentPane',
-	googleBar: '#gb',
-	toolBar: '#notify-widget-pane + div + div + div'
-};
-var s = selectors;
-// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
-s.widthRestrictor = '.fC';				
-s.chatRoster = '#oz-chat-roster';
 
+var selectors = {
+		content: '#content',
+		contentPane: '#contentPane',
+		googleBar: '#gb',
+		toolBar: '#notify-widget-pane + div + div + div'
+	};
+var s = selectors;
 var dynamicSelectors = {};
 
-s.postCommentEditorMention = 'h-kD';
-
-s.gamesWrapper = s.content + ' .d7';
-	s.gamesLeftCol = s.gamesWrapper + ' .vZ';
-	s.gamesContent = s.gamesWrapper + ' .PP';
-	s.gamesStream = s.gamesContent + ' .BZ';
-	s.gamesAllGamesWrapper = s.gamesContent + ' .rZ';
-	s.gamesAllGamesGameWrapper = s.gamesAllGamesWrapper + ' .b7';
-s.stream = s.content + ' > div:first-child';
-	s.streamLeftCol = s.stream + ' > div:first-child';
-	s.streamContent = s.stream + ' .a-n-E-M-eh-tb';				// #contentPane *class only* when in stream view (don't include ID)
-		s.streamShareWrapper = '.h-ZA-da-o';
-		s.streamIncomingNotice = s.streamContent + ' .a-ra-B.a-e-ra-B';
-	s.streamRightCol = s.streamContent + ' + div'
-		s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
-			s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + a';
-	s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
-		s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
-	s.streamNotificationCol = s.stream + ' .a-n-E-M-Dq-tb';		// When in notifications: #contentPane *class only* > div:first-child
-	s.incomingPostedBy = ' .Ov.GB';
-		s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
-		s.incomingPostedByMutePostButton = s.incomingPostedBy + ' > div:first-child > div:first-child + [role="button"]';
-	s.sparksSearchButton = s.streamNotificationCol + ' .d-q-p.j-e.j-e-Y.l2.e1';
-	s.sparksAddInterestButton = s.streamNotificationCol + ' .b-o-l.g-d.g-d-R.Oba.B9';
-s.profile = s.content + ' .a-n-E-M-He-tb';
-	s.profileContent = s.profile + ' .a-e-b-n-ac.a-b-n-ac'; 
-	s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
-s.post = 'div[id^="update"]';
-	s.postSelected = selectors.post + '.ze.sj.aj';		// you just have to figure out what class they're using
-	dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
-		dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
-		dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
-		dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
-		dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
-			dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
-		dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
-			dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
-	dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
-		dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
-
-		s.postButton = selectors.post + ' > div:first-child > div:first-child > span';
-		s.postMuteButton = '.a-N-j.c-O.a-N-j-Id.ik.Eg';
-		
-		s.postMutedNotice = selectors.post + '.Up.Qj';
-
-s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
-
-s.postImages = 'img[src*="googleusercontent"]';
-s.photosWrapper = '.a-n-E-M.a-n-E-M-Wd-Qb';
-s.photosLeftCol = s.photosWrapper + ' > div:first-child > div:first-child';
-s.photosContent = s.photosWrapper + ' > div:first-child > div:first-child + div';
-s.photosRightCol = s.photosWrapper + ' > div:first-child > div:nth-child(3)';
-s.sendFeedback = 'a[onclick*="appfeedback"]';
-s.profileLink = 'a[oid]';
-s.userContentImages = 'img[src*="googleusercontent.com"]';
-	
-if(debugSelectors && $(selectors.content).size() > 0) {
-	var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
-	var colors = {};
-	setTimeout(function() {
-		var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + debugAlign + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
-		html += '</div>';
-		function debugSelectors() {
-			var html = '<p>Selectors Found:</p>';
-			for(var x in selectors) {
-				var elem = $(selectors[x])
-				var numFound = elem.size();
-				// generate a random color to identify the element
-				if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
-				var color = colors[x];
-				elem.css('background', color);
-				elem.attr('title', x);
-				html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
-				
-				
+function detectWidthRestrictor() {
+	var widthInhibiterWidthPattern = /574/;
+	// selectorWidthRestrictor
+	var inhibiterSelctor = '';
+	$(s.contentPane + ' div').each(function() {
+		if($(this).css('width').match(widthInhibiterWidthPattern)) {
+			// determine classes of width inhibitor
+			var classes = this.className.split(" ");
+			// test for specific width inhibitor class
+			for(var i = 0; i < classes.length; i++) {
+				var selector = '.' + classes[i];
+				if($(selector).css('width').match(widthInhibiterWidthPattern))
+					inhibiterSelctor += selector + ', ';
 			}
-			$('#bcGPTksSelectorDebug').html(html);
 		}
-		debugSelectors();
-		setInterval(debugSelectors, 3000);
-		$('body').append(html);
-	}, 2000);
+	});
+	if(inhibiterSelctor != '') {
+		Config.set('selectorWidthRestrictor', inhibiterSelctor.replace(/,\s*$/, ''));
+		document.location = document.location;
+	}
 }
 
+function detectIncomingWrapper() {
+	var incomingNotice = $('a[href*="/stream/incoming"]', s.streamContent);
+	if(incomingNotice.size() > 0) {
+		var noticeWrapper = incomingNotice.parent().parent();
+		var str = '.' + noticeWrapper.attr('class').replace(/\s+/g, '.');
+		compareAndSaveSelector('selectorStreamIncomingNotice', str);
+	}
+}
 
+function compareAndSaveSelector(key, val) {
+	if(val.match(/\.[^\.]+\./) && Config.get(key) != val) {
+		Config.set(key, val);						// save the new selector
+		// update width inhibiter 
+		if(key == 'selectorStreamContent') {
+			detectWidthRestrictor();
+			detectIncomingWrapper();
+		}
+		document.location = document.location;		// refresh the page
+	}
+}
 
+function updateSelectors() {
+	if($(s.contentPane).size() == 1) {
+		var str = '.' + $(s.content + ' > div:first-child').attr('class').replace(/\s+/g, '.');
+		compareAndSaveSelector('selectorMainWrapper', str);
+		// main stream
+		if(document.location.toString().match(/plus\.google\.com\/(stream)?$/)) {
+			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
+			compareAndSaveSelector('selectorStreamContent', str);
+			if(!Config.get('selectorWidthRestrictor').match(/^\./)) detectWidthRestrictor();
+			if(!Config.get('selectorStreamIncomingNotice').match(/^\./)) detectIncomingWrapper();
+		}
+		// notifications
+		if(document.location.toString().match(/\/notifications\//)) {
+	 		var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
+	 		compareAndSaveSelector('selectorStreamNotificationCol', str);
+		}
+		// photos
+		if(document.location.toString().match(/plus\.google\.com\/photos/)) {
+			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
+			compareAndSaveSelector('selectorPhotos', str);
+		}
+		// user profile
+		if(document.location.toString().match(/plus\.google\.com\/\d+\//)) {
+			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
+			compareAndSaveSelector('selectorProfile', str);
+		}
+	}
+}
+
+function populateSelectors() {
+	// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
+	s.widthRestrictor = Config.get('selectorWidthRestrictor');				
+	s.chatRoster = '#oz-chat-roster';
+	
+	
+	
+	s.postCommentEditorMention = 'i-YC';
+	
+	s.gamesWrapper = s.content + ' .d7';
+		s.gamesLeftCol = s.gamesWrapper + ' .vZ';
+		s.gamesContent = s.gamesWrapper + ' .PP';
+		s.gamesStream = s.gamesContent + ' .BZ';
+		s.gamesAllGamesWrapper = s.gamesContent + ' .rZ';
+		s.gamesAllGamesGameWrapper = s.gamesAllGamesWrapper + ' .b7';
+	s.stream = s.content + ' ' + Config.get('selectorMainWrapper');
+		s.streamLeftCol = s.stream + ' > div:first-child';
+		s.streamContent = s.stream + ' ' + Config.get('selectorStreamContent');				// #contentPane *class only* when in stream view (don't include ID)
+			s.streamShareWrapper = '.h-ZA-da-o';
+			s.streamIncomingNotice = s.streamContent + ' ' + (Config.get('selectorStreamIncomingNotice') != '' ? Config.get('selectorStreamIncomingNotice') : '.nope');
+		s.streamRightCol = s.streamContent + ' + div'
+			s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
+				s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + a';
+		s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
+			s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
+		s.streamNotificationCol = s.stream + ' ' + (Config.get('selectorStreamNotificationCol') != '' ? Config.get('selectorStreamNotificationCol') : '.nope');		// When in notifications: #contentPane *class only* > div:first-child
+		s.incomingPostedBy = ' .Ov.GB';
+			s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
+			s.incomingPostedByMutePostButton = s.incomingPostedBy + ' > div:first-child > div:first-child + [role="button"]';
+		s.sparksSearchButton = s.streamNotificationCol + ' .d-q-p.j-e.j-e-Y.l2.e1';
+		s.sparksAddInterestButton = s.streamNotificationCol + ' .b-o-l.g-d.g-d-R.Oba.B9';
+	s.profile = s.content + ' ' + (Config.get('selectorProfile') != '' ? Config.get('selectorProfile') : '.nope');
+		s.profileContent = s.profile + ' .vcard > div:first-child'; 
+		s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
+	s.post = 'div[id^="update"]';
+		s.postSelected = s.post + Config.get('selectorCurrentPost');		// you just have to figure out what class they're using
+		dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
+			dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
+			dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
+			dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
+			dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
+				dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
+			dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
+				dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
+		dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
+			dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
+	
+			dynamicSelectors.postButton = s.post + ' > div:first-child > div:first-child > span';
+			s.postMuteButton = Config.get('selectorMuteButton') != '' ? Config.get('selectorMuteButton') : '.nope';
+			
+			s.postMutedNotice = s.post + (Config.get('selectorPostMutedNotice') != '' ? Config.get('selectorPostMutedNotice') : '.nope');
+	
+	s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
+	
+	s.postImages = 'img[src*="googleusercontent"]';
+	s.photosWrapper = (Config.get('selectorPhotos') != '' ? Config.get('selectorPhotos') : '.nope');
+	s.photosLeftCol = s.photosWrapper + ' > div:first-child > div:first-child';
+	s.photosContent = s.photosWrapper + ' > div:first-child > div:first-child';
+	s.photosRightCol = s.photosWrapper + ' > div:first-child > div:nth-child(3)';
+	s.sendFeedback = 'a[onclick*="appfeedback"]';
+	s.profileLink = 'a[oid]';
+	s.userContentImages = 'img[src*="googleusercontent.com"]';
+	
+	if(debugSelectors && $(s.content).size() > 0) {
+		var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
+		var colors = {};
+		setTimeout(function() {
+			var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + debugAlign + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
+			html += '</div>';
+			function debugSelectors() {
+				var html = '<p>Selectors Found:</p>';
+				for(var x in selectors) {
+					var elem = $(selectors[x])
+					var numFound = elem.size();
+					// generate a random color to identify the element
+					if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
+					var color = colors[x];
+					elem.css('background', color);
+					elem.attr('title', x);
+					html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
+					
+					
+				}
+				$('#bcGPTksSelectorDebug').html(html);
+			}
+			debugSelectors();
+			setInterval(debugSelectors, 3000);
+			$('body').append(html);
+		}, 2000);
+	}
+}
+	
 
 var playVideoIconSelector = '.ea-S-ei';
 
-var postAddCommentSelector = selectors.post + ' span.d-h.a-b-f-i-W-h[role="button"]';
 var profileColumnSelector = '.a-b-c-ka-Mc.a-c-ka-Mc'
 var profileLinkSelector = 'a[oid]';
 var rightColSelector = '.a-b-Cs-T.a-Cs-T.d-s-r';
@@ -235,7 +319,6 @@ var sharedByIncomingNoticeSelector = '.a-f-i-Jf-Om.a-b-f-i-Jf-Om';
 var vCardSelector = 'table.a-ia-ta';
 var vcardAvatarSelector = vCardSelector + ' img.a-ia-tk[src*="googleusercontent"]';
 var vcardAvatarInCommonSelector = vCardSelector + ' img.a-ia-Bq[src*="googleusercontent"]';
-
 
 var previewHeightMax = $(window).height() - 40;
 var previewWidthMax = previewHeightMax;
@@ -254,7 +337,8 @@ function GTweaks() {
 		'<a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr Google+ Tweaks" title="Flattr this" border="0" /></a>';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
-	this.version = 0.026;
+	this.version = version;
+	this.muteButtonClassFound = false;
 	this.options = {
 		"General":{
 			"faviconBadge":{
@@ -398,6 +482,83 @@ function GTweaks() {
 				description:'Hide the "Send Invites" section'
 			}
 		},
+		"Selectors":{
+			"selectorsIntroHtml":{
+				type:'html',
+				text:'<p>This tab is for advanced users only. The Google+ DOM and element classes are constantly changing. These settings are an attempt to combat these changes and create some stability for end-users.</p>' +
+					''
+			},
+			"selectorAutoUpdate":{
+				label:'Auto Update',
+				type:'checkbox',
+				description:'Automatically detect and update selectors below',
+				'default':true
+			},			
+			"selectorWidthRestrictor":{
+				label:'Width Restrictors',
+				type:'text',
+				description:'Classes that restrict width',
+				'default':''
+			},			
+			"selectorMainWrapper":{
+				label:'Main Wrapper',
+				type:'text',
+				description:'Contains main content',
+				'default':'.a-o-I-R.a-o-I-R-jk-Yb'
+			},			
+			"selectorStreamContent":{
+				label:'Content',
+				type:'text',
+				description:'Main stream content wrapper',
+				'default':'.a-o-I-R.a-o-I-R-jk-Yb'
+			},			
+			"selectorStreamIncomingNotice":{
+				label:'Incoming Notice',
+				type:'text',
+				description:'New incoming wrapper',
+				'default':''
+			},			
+			"selectorStreamNotificationCol":{
+				label:'Notifications',
+				type:'text',
+				description:'Notifications content wrapper',
+				'default':''
+			},			
+			"selectorPhotos":{
+				label:'Photos',
+				type:'text',
+				description:'Photos wrapper',
+				'default':''
+			},			
+			"selectorProfile":{
+				label:'Profile',
+				type:'text',
+				description:'Profile wrapper',
+				'default':''
+			},			
+			"selectorMuteButton":{
+				label:'Mute Button',
+				type:'text',
+				description:'Post menu mute item',
+				'default':'.a-Q-j.b-O.a-Q-j-xd.Fj.cg'
+			},			
+			"selectorManualNoticeHtml":{
+				type:'html',
+				'text':'<p>The following must be updated manually for now.</p>'
+			},
+			"selectorCurrentPost":{
+				label:'Current Post',
+				type:'text',
+				description:'Highlighted/active post',
+				'default':'.ki'
+			},			
+			"selectorPostMutedNotice":{
+				label:'Muted Notice',
+				type:'text',
+				description:'Post muted notice',
+				'default':'.Un'
+			}	
+		},
 		"About":{
 			'about':{
 				type:'html',
@@ -415,11 +576,6 @@ function GTweaks() {
 					'</p>'
 			}
 		}
-	};
-	this.selectors = {
-		muteNotice: selectors.post + '.Of.al.zp.Kk',
-		post: '#content div[id^="update"]',
-		postMedia: '#content .a-b-f-S-oa img[src*="googleusercontent"]'
 	};
 	this.features = {
 		favicon: {
@@ -502,19 +658,28 @@ function GTweaks() {
 					var profileWidth = $(window).width() - profileLeftColWidth - 5;
 					
 					var gameContentWidth = $(window).width() - 190;
+					
 					self.addStyle(
 						// global and general
 						selectors.stream + ', ' + selectors.content + ', ' + s.widthRestrictor + ' { width:100% !important; }' +
+						selectors.stream + ' { width:' + $(window).width() + 'px !important; }' +
 						selectors.contentPane + ' { width:100%; }' +
 						selectors.contentPane + ' > div { width:100% !important; }' +
+						selectors.contentPane + ' > div > div { width:100% !important; }' +
+						selectors.contentPane + ' > div > div > div { width:100% !important; }' +
+						
 						// all direct discendants of content pane should be 100% with no margins
 						s.contentPane + ' > div:first-child > div { width:100%; margin:0 !important; }' +
 						
 						// stream
-						s.streamLeftCol + ', ' + s.streamNotificationCol + ' { float:left; }' +				
+						s.streamLeftCol + ', ' + s.streamNotificationCol + ' { float:left; width:' + (streamLeftColWidth - 20) + 'px !important; }' +				
 						s.streamRightCol + ' { position:absolute; right:10px; }' +				
-						s.streamContent + ' { width:' + streamContentWidth + 'px; float:left; }' +
-						s.streamNotificationCol + ' { width:' + streamNotificationWidth + 'px; float:left; }' +
+						s.streamContent + ' { width:' + streamContentWidth + 'px !important; position:absolute; left:' + streamLeftColWidth + 'px; }' +
+						s.streamIncomingNotice + ' { width:' + (streamContentWidth - 42) + 'px !important; }' +
+						s.streamIncomingNotice + ' > div { width:32px !important; }' +
+						s.streamIncomingNotice + ' > span:first-child + div { width:100% !important; }' +
+						s.streamIncomingNotice + ' > div[data-promo-type] { width:100% !important; }' +
+						s.streamNotificationCol + ' { width:' + streamNotificationWidth + 'px !important; float:left; }' +
 						// notificatio contents
 						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div { width:100%; margin:0; padding:0; }' +
 						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div > div { margin-left:20px; margin-right:20px; }' +
@@ -542,29 +707,25 @@ function GTweaks() {
 					self.addStyle(
 						selectors.postPlusOneButton + ' { margin-right:.5em; }'
 					);
-					self.addPolling(self.features.inlinePlusShare.processPosts);
 				}
 			},
-			processPosts:function() {
-				$(selectors.post).each(function() {
-					var post = this;
-					$(selectors.postPlussesAndShares, post).each(function() {
-						// plusses
-						$(selectors.postPlussesWrapper, this).each(function() {
-							$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this));
-							$(this).remove();
-						});
-						// shares
-						$(selectors.postSharesWrapper, this).each(function() {
-							var shares = $(selectors.postShares, this);
-							$(selectors.postShareButton, post).after(shares);
-							$(selectors.postShareButton, post).after(' (');
-							$(shares).after(')');
-							$(shares).html($(shares).html().replace(/[^\d]/g, ''));
-							$(this).remove();
-						});
-						if($('*', this).size() == 0) $(this).remove();
+			processPost:function(post) {
+				$(selectors.postPlussesAndShares, post).each(function() {
+					// plusses
+					$(selectors.postPlussesWrapper, this).each(function() {
+						$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this));
+						$(this).remove();
 					});
+					// shares
+					$(selectors.postSharesWrapper, this).each(function() {
+						var shares = $(selectors.postShares, this);
+						$(selectors.postShareButton, post).after(shares);
+						$(selectors.postShareButton, post).after(' (');
+						$(shares).after(')');
+						$(shares).html($(shares).html().replace(/[^\d]/g, ''));
+						$(this).remove();
+					});
+					if($('*', this).size() == 0) $(this).remove();
 				});
 			}
 		},
@@ -639,7 +800,7 @@ function GTweaks() {
 											$('#bcGPTwksPrvImg').hide();
 											$(previewDiv).fadeIn('fast');
 											var src = currentPreviewTarget.src.replace(/\/w\d+[^\/]+\//, '/w' + previewWidthMax + '/');
-											src = src.replace(/\/s\d+[^\/]+\//, '');
+											src = src.replace(/\/s\d+[^\/]+\//, '/');
 											src = src.replace(/\/h\d+[^\/]+\//, '/h' + maxHeight + '/');
 											src = src.replace(/resize_w=\d+/, '');
 											src = src.replace(/sz=\d+/, '');
@@ -693,7 +854,6 @@ function GTweaks() {
 							'.bcGPlusTwCollapseComments:hover { background-color:#eee; }' +
 							'.bcTweaksHiddenComments + div { display: none; }'
 					);
-					self.addPolling(self.features.comments.processPosts);
 					// press "M" to mute the current post
 					$('body').keyup(function(e) {
 						if(!eventIsFromTyping(e)) {
@@ -704,15 +864,14 @@ function GTweaks() {
 									if(numCommentsButton.size() > 0) {
 										simulateClick(numCommentsButton[0]);
 									}
-									break;c
+									break;
 							}
 						}
 					});
 				}
 			},
-			processPosts: function() {
-				$(selectors.post).each(function() {
-					var post = this;
+			processPost: function(post) {
+				if(Config.get('comments')) {
 					var hasBeenCollapsed = false;
 					$(selectors.postCommentsWrapper, post).each(function() {
 						var _comments = this;
@@ -775,95 +934,90 @@ function GTweaks() {
 							}
 						}
 					});
-					
-				});
+				}
 			}
 		},
 		mention: {
 			init: function() {
 				if(Config.get('easyMentions')) {
-					self.addStyle(self.selectors.post + ' .bcGTweakEzMntn { cursor:pointer; opacity:0.5; font-size:8px; position:relative; top:-1px; ' +
+					self.addStyle(s.post + ' .bcGTweakEzMntn { cursor:pointer; opacity:0.5; font-size:8px; position:relative; top:-1px; ' +
 						'margin:0 5px 0 3px; white-space: nowrap; background-color: rgb(238, 238, 238); border:1px solid rgb(221, 221, 221);' +
 						'display: inline-block; padding:0 4px; color: rgb(51, 102, 204); }' +
-						self.selectors.post + ' .bcGTweakEzMntn:hover { opacity:1; }' +
+						s.post + ' .bcGTweakEzMntn:hover { opacity:1; }' +
 						// don't display in shares dropdown
 						'.TQ0zYb .bcGTweakEzMntn { display:none !important; }'
 					);
-					self.addPolling(self.features.mention.processPosts);
 				}
 			},
-			processPosts: function() {
-				$(selectors.post).each(function() {
-					var post = this;
-					$(selectors.profileLink, post).each(function() {
-						var link = this;
-						if(link.rel != 'bcGTweakEzMntn' && $('img', link).size() == 0) {
-							link.rel = 'bcGTweakEzMntn';
-							var mention = document.createElement('span');
-							mention.innerHTML = "+";
-							mention.title = "Mention " + link.innerHTML + " in your comment";
-							mention.className = 'bcGTweakEzMntn';
-							$(mention).click(function() {
-								// find post wrapper
-								var addCommentLink = $(selectors.postCommentButton, post)[0];
-								simulateClick(addCommentLink);
-								
-								function insertMentionRef(name, id) {
-									var editor = $('.editable', post); 
-									if(editor.size() > 0) {
-										var editorMentionClass = selectors.postCommentEditorMention.replace(/^\./, '');
-										
-										if(navigator.userAgent.match(/chrome/i)) {
-											var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span style="color: rgb(136, 136, 136); ">+</span>' + name + '</button><span>&nbsp;</span>';
-										} else {
-											var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
-											
-										}
-										
-										editor.attr('tabfocus', '0');
-										//editor.focus();
-										
-										if($('iframe', editor).size() > 0) {
-											editor = $('iframe', editor).contents().find("body");
-										}
-										
-										var existingHtml = editor.html().replace(/^(\n|\s)*<\/*br>(\n|\s)*/, '').replace(/(\n|\s)*<\/*br>(\n|\s)*$/, '');
-										editor.html(existingHtml +  html);
-										editor.focus();
-										editor.attr('');
-										setTimeout(function() {
-											placeCaretAtEnd( editor[0]);
-										}, 100);
+			processPost: function(post) {
+				$(selectors.profileLink, post).each(function() {
+					var link = this;
+					if(link.rel != 'bcGTweakEzMntn' && $('img', link).size() == 0) {
+						link.rel = 'bcGTweakEzMntn';
+						var mention = document.createElement('span');
+						mention.innerHTML = "+";
+						mention.title = "Mention " + link.innerHTML + " in your comment";
+						mention.className = 'bcGTweakEzMntn';
+						$(mention).click(function() {
+							// find post wrapper
+							var addCommentLink = $(selectors.postCommentButton, post)[0];
+							simulateClick(addCommentLink);
+							
+							function insertMentionRef(name, id) {
+								var editor = $('.editable', post); 
+								if(editor.size() > 0) {
+									var editorMentionClass = selectors.postCommentEditorMention.replace(/^\./, '');
+									
+									if(navigator.userAgent.match(/chrome/i)) {
+										var html = ' <span> </span><button contenteditable="false" tabindex="-1" style="white-space: nowrap; background-image: initial; background-attachment: initial; background-origin: initial; background-clip: initial; background-color: rgb(238, 238, 238); border-top-width: 1px; border-right-width: 1px; border-bottom-width: 1px; border-left-width: 1px; border-top-style: solid; border-right-style: solid; border-bottom-style: solid; border-left-style: solid; border-top-color: rgb(221, 221, 221); border-right-color: rgb(221, 221, 221); border-bottom-color: rgb(221, 221, 221); border-left-color: rgb(221, 221, 221); border-top-left-radius: 2px 2px; border-top-right-radius: 2px 2px; border-bottom-right-radius: 2px 2px; border-bottom-left-radius: 2px 2px; display: inline-block; font: normal normal normal 13px/1.4 Arial, sans-serif; margin-top: 0px; margin-right: 1px; margin-bottom: 0px; margin-left: 1px; padding-top: 0px; padding-right: 1px; padding-bottom: 0px; padding-left: 1px; vertical-align: baseline; color: rgb(51, 102, 204); background-position: initial initial; background-repeat: initial initial; " class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span style="color: rgb(136, 136, 136); ">+</span>' + name + '</button><span>&nbsp;</span>';
 									} else {
-										setTimeout(function() {
-											insertMentionRef(name, id);
-										}, 200);
+										var html = ' <span> </span><input type="button" tabindex="-1" value="+' + name + '" style="white-space: nowrap; background: none repeat scroll 0% 0% rgb(238, 238, 238); border: 1px solid rgb(221, 221, 221); border-radius: 2px 2px 2px 2px; display: inline-block; font: 13px/1.4 Arial,sans-serif; margin: 0pt 1px; padding: 0pt 1px; vertical-align: baseline; color: rgb(51, 102, 204);" class="' + editorMentionClass + '" data-token-entity="@' + id + '" oid="' + id + '"><span>&nbsp;</span>';
+										
 									}
-								}
-								
-								// http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
-								function placeCaretAtEnd(el) {
-									el.focus();
-									if (typeof window.getSelection != "undefined"
-										&& typeof document.createRange != "undefined") {
-										var range = document.createRange();
-										range.selectNodeContents(el);
-										range.collapse(false);
-										var sel = window.getSelection();
-										sel.removeAllRanges();
-										sel.addRange(range);
-									} else if (typeof document.body.createTextRange != "undefined") {
-										var textRange = document.body.createTextRange();
-										textRange.moveToElementText(el);
-										textRange.collapse(false);
-										textRange.select();
+									
+									editor.attr('tabfocus', '0');
+									//editor.focus();
+									
+									if($('iframe', editor).size() > 0) {
+										editor = $('iframe', editor).contents().find("body");
 									}
+									
+									var existingHtml = editor.html().replace(/^(\n|\s)*<\/*br>(\n|\s)*/, '').replace(/(\n|\s)*<\/*br>(\n|\s)*$/, '');
+									editor.html(existingHtml +  html);
+									editor.focus();
+									editor.attr('');
+									setTimeout(function() {
+										placeCaretAtEnd( editor[0]);
+									}, 100);
+								} else {
+									setTimeout(function() {
+										insertMentionRef(name, id);
+									}, 200);
 								}
-								insertMentionRef(link.innerHTML, $(link).attr('oid'));
-							});
-							$(link).after(mention);
-						}
-					});
+							}
+							
+							// http://stackoverflow.com/questions/4233265/contenteditable-set-caret-at-the-end-of-the-text-cross-browser
+							function placeCaretAtEnd(el) {
+								el.focus();
+								if (typeof window.getSelection != "undefined"
+									&& typeof document.createRange != "undefined") {
+									var range = document.createRange();
+									range.selectNodeContents(el);
+									range.collapse(false);
+									var sel = window.getSelection();
+									sel.removeAllRanges();
+									sel.addRange(range);
+								} else if (typeof document.body.createTextRange != "undefined") {
+									var textRange = document.body.createTextRange();
+									textRange.moveToElementText(el);
+									textRange.collapse(false);
+									textRange.select();
+								}
+							}
+							insertMentionRef(link.innerHTML, $(link).attr('oid'));
+						});
+						$(link).after(mention);
+					}
 				});
 			}
 		},
@@ -918,23 +1072,20 @@ function GTweaks() {
 					});
 				}
 			},
-			processPosts: function() {
-				$(selectors.post).each(function() {
-					var post = this;
-					if(!post.className.match(/bcTweaksMiniPost/)) {
-						post.className += ' bcTweaksMiniPostCollapsed';
-						$(post).click(function() {
-							if(this.className.match(/bcTweaksMiniPostCollapsed/)) {
-								self.features.postPreviews.expandPost(post);
-							}
-						});
-						$(post).append('<div class="bcTweaksMiniPostCollapse" title="Collapse this post">&nbsp;</div>');
-						$('.bcTweaksMiniPostCollapse', post).click(function(e) {
-							e.stopPropagation();
-							self.features.postPreviews.collapsePost(post);
-						});
-					}
-				});
+			processPost: function(post) {
+				if(!post.className.match(/bcTweaksMiniPost/)) {
+					post.className += ' bcTweaksMiniPostCollapsed';
+					$(post).click(function() {
+						if(this.className.match(/bcTweaksMiniPostCollapsed/)) {
+							self.features.postPreviews.expandPost(post);
+						}
+					});
+					$(post).append('<div class="bcTweaksMiniPostCollapse" title="Collapse this post">&nbsp;</div>');
+					$('.bcTweaksMiniPostCollapse', post).click(function(e) {
+						e.stopPropagation();
+						self.features.postPreviews.collapsePost(post);
+					});
+				}
 			},
 			collapsePost:function(post) {
 				post.className = post.className.replace(/bcTweaksMiniPostExpanded/, 'bcTweaksMiniPostCollapsed');
@@ -964,7 +1115,6 @@ function GTweaks() {
 						selectors.incomingPostedBy + ' + .bcGTweaksMute { top:26px; }' +
 						selectors.incomingPostedByAddToCircles + ' { margin-right:55px; }'
 					);
-					self.addPolling(self.features.muteButton.processPosts);
 					// press "M" to mute the current post
 					$('body').keyup(function(e) {
 						if(!eventIsFromTyping(e)) {
@@ -982,23 +1132,23 @@ function GTweaks() {
 					});
 				}
 			},
-			processPosts: function() {
+			processPost: function(post) {
 				try {
-					$(selectors.postButton).each(function() {
+					$(selectors.postButton, post).each(function() {
 						try {
-							if($('.bcGTweaksMute', $(this).parent()).size() == 0) {
+							if($('.bcGTweaksMute', post).size() == 0) {
 								var _this = this;
 								setTimeout(function() {
 									var m = document.createElement('div');
 									m.className = 'bcGTweaksMute';
 									m.innerHTML = '&nbsp;';
 									m.style.cursor = 'pointer';
-									var mb = $(selectors.postMuteButton, $(_this).parent().parent().next())[0];
+									var mb = $(selectors.postMuteButton, post)[0];
 									if(mb) {
 										$(_this).before(m);
 										m.title = $(mb).text();
 										$(m).click(function() {
-											var mb = $(selectors.postMuteButton, $(this).parent().parent().next())[0];
+											var mb = $(selectors.postMuteButton, post)[0];
 											if(mb) simulateClick(mb);
 										});
 									}
@@ -1082,6 +1232,7 @@ function GTweaks() {
 		Config.scriptName = 'Google+ Tweaks';
 		Config.footer = '<span style="position:relative; top:5px">' + self.donateButtonsHtml + '</span>';
 		Config.options = this.options;
+		populateSelectors();
 		self.initFeatures();
 		self.applyStyle();
 		self.startPolling();
@@ -1089,6 +1240,42 @@ function GTweaks() {
 		$(selectors.streamShareWrapper).click(function() {
 			typing = true;
 		});
+		
+		if(!document.location.toString().match(/frame/)) {
+
+			var css = '';
+			
+			
+			
+//			if(Config.get('postButtons')) stylePostButtons();
+			
+			
+			
+			
+			if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
+			if(Config.get('hideWelcomeLink')) css += selectors.streamWelcomeLink + ', ' + selectors.streamWelcomeLink + ' + div { display:none; }';
+			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
+			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
+			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
+			
+			// right column
+			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
+			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
+			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
+			
+			
+			// implement CSS
+			if(css != '') {
+				if(typeof(GM_addStyle) == 'function') {
+					GM_addStyle(css);
+				} else {
+					var sheet = document.createElement('style') ;
+					sheet.innerHTML = css;
+					document.body.appendChild(sheet);
+				}
+			}
+		}
+		
 		return true;
 	};
 	this.addPolling = function(fnct) {
@@ -1136,11 +1323,42 @@ function GTweaks() {
  		}
  	};
  	this.startPolling = function() {
+ 		
+ 		// auto detect main classes
+ 		if(Config.get('selectorAutoUpdate')) updateSelectors();
+ 		
  		// auto detect any missing class names using relative DOM paths
  		for(var x in dynamicSelectors) {
  			self.detectElementClass(x, dynamicSelectors[x]);
  		}
+ 		
+ 		// poll posts
+ 		$(selectors.post).each(function() {
+ 			var post = this; 
+ 			
+ 			// detect mute button class
+ 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 4) {
+ 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(2).attr('class').replace(/\s+/g, '.');
+ 				self.muteButtonClassFound = true;
+ 				if(Config.get('selectorMuteButton') != muteButtonSelector) {
+ 					Config.set('selectorMuteButton', muteButtonSelector);
+ 					document.location = document.location;
+ 				}
+ 			}
+ 			
+ 			// launch feature processPost functions
+ 			for(var k in self.features) {
+ 				var feature = self.features[k];
+ 				if(typeof(feature.processPost) == 'function') {
+ 					feature.processPost(post);
+ 				}
+ 			}
+ 		});
+ 		
  		// fire feature polls
+ 		for(var i = 0; i < self.pollFuncions.length; i++) {
+ 			self.pollFuncions[i]();
+ 		}
  		for(var i = 0; i < self.pollFuncions.length; i++) {
  			self.pollFuncions[i]();
  		}
@@ -1369,39 +1587,5 @@ function simulateClick(element) {
     element.dispatchEvent(clickEvent);
 }
 
-if(!document.location.toString().match(/frame/)) {
-
-	var css = '';
-	
-	
-	
-//	if(Config.get('postButtons')) stylePostButtons();
-	
-	
-	
-	
-	if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
-	if(Config.get('hideWelcomeLink')) css += selectors.streamWelcomeLink + ', ' + selectors.streamWelcomeLink + ' + div { display:none; }';
-	if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
-	if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
-	if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
-	
-	// right column
-	if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
-	if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
-	if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
-	
-	
-	// implement CSS
-	if(css != '') {
-		if(typeof(GM_addStyle) == 'function') {
-			GM_addStyle(css);
-		} else {
-			var sheet = document.createElement('style') ;
-			sheet.innerHTML = css;
-			document.body.appendChild(sheet);
-		}
-	}
-}
 
 new GTweaks();

@@ -2,10 +2,11 @@
 // @name           Script Options
 // @description    Adds a configurable options dialogue to user scripts
 // @author         Jerome Dane
-// @version        0.004
+// @version        0.005
 //
 // @website        http://userscripts.org/scripts/show/106223
 //
+// @history        0.005 Added support for "text" field types
 // @history        0.004 Changed "Save & Reload Page" button text to "Save & Reload"
 // @history        0.004 Added optional Config.footer property to insert HTML into the footer of the dialog
 // @history        0.003 Added 'select' option type
@@ -66,6 +67,10 @@ Config = {
 							case 'checkbox':
 								contentHtml += '<input type="checkbox" name="' + name + '"' +
 								(Config.get(optionKey) ? 'checked' : '') + '/>';
+								break;
+							case 'text':
+								contentHtml += '<input type="text" name="' + name + '" value="' +
+								(Config.get(optionKey) ? unescape(Config.get(optionKey)) : '') + '"/>';
 								break;
 							case 'select':
 								contentHtml += '<select name="' + name + '">';
@@ -155,30 +160,38 @@ Config = {
 						val = $('select[name="' + name + '"]').val();
 						Config.set(optionKey, val);
 						break;
+					case 'text':
+						val = $('input[name="' + name + '"]').val();
+						Config.set(optionKey, escape(val));
+						break;
 				}
 			}
 		}
 	},
 	get:function(optionKey) {
-		var val = GM_getValue(optionKey, null);
-		if(val == null) {
-			// get option
-			for(var tabLabel in Config.options) {
-				// insert options
-				for(var optionKeyTest in Config.options[tabLabel]) {
-					if(optionKeyTest == optionKey) {
-						var option = Config.options[tabLabel][optionKeyTest];
+		// find the config option in question
+		for(var tabLabel in Config.options) {
+			// insert options
+			for(var k in Config.options[tabLabel]) {
+				if(k == optionKey) {
+					var option = Config.options[tabLabel][k];
+					// get stored value
+					var val = GM_getValue(optionKey, null);
+					if(val == null || typeof(val) == 'undefined') {
 						if(typeof(option['default']) != 'undefined') {
 							return(option['default']);
 						} else {
-							return null;
-						}
+							return type == 'text' ? '' : null;
+						};
+					} else {
+						return option.type == 'text' ? unescape(val) : val; 
 					}
+					  
 				}
 			}
-		} else {
-			return val
 		}
+		alert(optionKey + ' is not a valid option');
+		
 	},
 	set:function(optionKey, val) {
 		GM_setValue(optionKey, val);
