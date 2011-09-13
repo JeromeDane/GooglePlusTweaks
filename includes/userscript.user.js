@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.030
+// @version        0.032
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -33,6 +33,12 @@
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
 //
+// @history        0.032 Fixed easy mentions
+// @history        0.032 Fixed inability to disable inlune plusses and shares
+// @history        0.032 Fixed inability plusses not showing up
+// @history        0.032 Fixed background color occasionally switching back to white when using visibility tweaks
+// @history        0.032 Updated posts muted class to fix hiding/fading of mute notices
+// @history        0.031 Fixed a glitch in the options script that was causing the whole thing to fail
 // @history        0.030 Fixed comments collapsing even when turned off
 // @history        0.030 Fixed easy mentions not linking in comments
 // @history        0.029 Fixed mute button
@@ -129,7 +135,7 @@
 //
 // ==/UserScript==
 
-var version = 0.30;
+var version = 0.32;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -221,9 +227,7 @@ function populateSelectors() {
 	s.widthRestrictor = Config.get('selectorWidthRestrictor');				
 	s.chatRoster = '#oz-chat-roster';
 	
-	
-	
-	s.postCommentEditorMention = 'i-YC';
+	s.postCommentEditorMention = 'f-IE';
 	
 	s.gamesWrapper = s.content + ' .d7';
 		s.gamesLeftCol = s.gamesWrapper + ' .vZ';
@@ -266,7 +270,7 @@ function populateSelectors() {
 			dynamicSelectors.postButton = s.post + ' > div:first-child > div:first-child > span';
 			s.postMuteButton = Config.get('selectorMuteButton') != '' ? Config.get('selectorMuteButton') : '.nope';
 			
-			s.postMutedNotice = s.post + (Config.get('selectorPostMutedNotice') != '' ? Config.get('selectorPostMutedNotice') : '.nope');
+			s.postMutedNotice = '.En';//s.post + (Config.get('selectorPostMutedNotice') != '' ? Config.get('selectorPostMutedNotice') : '.nope');
 	
 	s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
 	
@@ -705,28 +709,44 @@ function GTweaks() {
 			init: function() {
 				if(Config.get('inlinePlusShare')) {
 					self.addStyle(
-						selectors.postPlusOneButton + ' { margin-right:.5em; }'
+						selectors.postPlusOneButton + ' { margin-right:.5em; } ' +
+						selectors.postPlussesAndShares + ' { display:none !important; position:absolute; top:0; left:0; visibility:hidden; }'
 					);
 				}
 			},
 			processPost:function(post) {
-				$(selectors.postPlussesAndShares, post).each(function() {
-					// plusses
-					$(selectors.postPlussesWrapper, this).each(function() {
-						$(selectors.postPlusOneButton, post).after($(selectors.postPlusses, this));
-						$(this).remove();
+				if(Config.get('inlinePlusShare')) {	
+					$(selectors.postPlussesAndShares, post).each(function() {
+						$(this).css('display', 'none');
+//						$(this).css('height', '1px');
+//						$(this).css('overflow', 'hidden');
+						// plusses
+						$(selectors.postPlussesWrapper, this).each(function() {
+							var plusses = $(selectors.postPlusses, this);
+							
+							if(plusses.size() == 1) {
+								plusses.attr('name', 'inlinePlusHack');
+								$(selectors.postPlusOneButton, post).after(plusses);
+								if(plusses.next().text().match(/\d/)) {
+									plusses.remove();
+								}
+								$(this).remove();
+							}
+						});
+						// shares
+						$(selectors.postSharesWrapper, this).each(function() {
+							$('.inlineSharesHack:eq(0)', post).next().remove();			// strip any existing hacks
+							$('.inlineSharesHack', post).remove();			// strip any existing hacks
+							var shares = $(selectors.postShares, this);
+							$(selectors.postShareButton, post).after(shares);
+							$(selectors.postShareButton, post).after(' <span class="inlineSharesHack">(</span>');
+							$(shares).after('<span class="inlineSharesHack">)</span>');
+							$(shares).html($(shares).html().replace(/[^\d]/g, '') + '');
+							$(this).remove();
+						});
+						$(this).html('');
 					});
-					// shares
-					$(selectors.postSharesWrapper, this).each(function() {
-						var shares = $(selectors.postShares, this);
-						$(selectors.postShareButton, post).after(shares);
-						$(selectors.postShareButton, post).after(' (');
-						$(shares).after(')');
-						$(shares).html($(shares).html().replace(/[^\d]/g, ''));
-						$(this).remove();
-					});
-					if($('*', this).size() == 0) $(this).remove();
-				});
+				}
 			}
 		},
 		imagePreviews: {
@@ -1188,7 +1208,8 @@ function GTweaks() {
 				if(Config.get('readability')) {
 					var bgColor = '#f1f1f1';
 					self.addStyle(
-							'body { background:' + bgColor + '; }' +
+							'body { background:' + bgColor + ' !important; }' +
+							'body { background-color:' + bgColor + ' !important; }' +
 							selectors.toolBar + ' { border-bottom:none; }' +
 							selectors.content + ' { border-top:none; }' +
 							selectors.content + ' > div:first-child { background:' + bgColor + '; }' +

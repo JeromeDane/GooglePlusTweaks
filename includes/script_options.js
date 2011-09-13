@@ -2,10 +2,11 @@
 // @name           Script Options
 // @description    Adds a configurable options dialogue to user scripts
 // @author         Jerome Dane
-// @version        0.005
+// @version        0.006
 //
 // @website        http://userscripts.org/scripts/show/106223
 //
+// @history        0.006 Fixed a glitch in option type detection that caused scripts to fail
 // @history        0.005 Added support for "text" field types
 // @history        0.004 Changed "Save & Reload Page" button text to "Save & Reload"
 // @history        0.004 Added optional Config.footer property to insert HTML into the footer of the dialog
@@ -181,7 +182,7 @@ Config = {
 						if(typeof(option['default']) != 'undefined') {
 							return(option['default']);
 						} else {
-							return type == 'text' ? '' : null;
+							return option.type == 'text' ? '' : null;
 						};
 					} else {
 						return option.type == 'text' ? unescape(val) : val; 

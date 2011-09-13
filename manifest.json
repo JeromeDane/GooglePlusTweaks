@@ -6,7 +6,7 @@
       	"includes/gm_functions.js", 
       	"includes/jqueryui.js", 
       	"includes/script_options.js", 
-      	"includes/userscript.js"
+      	"includes/userscript.user.js"
       ],
       "matches": [ "http://plus.google.com/*", "https://plus.google.com/*" ],
       "run_at": "document_end"
@@ -17,5 +17,5 @@
    },
    "name": "Google+ Tweaks",
    "permissions": [ "http://plus.google.com/*", "https://plus.google.com/*", "unlimited_storage", "notifications" ],
-   "version": "0.3"
+   "version": "0.32"
 }
