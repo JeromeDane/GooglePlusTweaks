@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.032
+// @version        0.33
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -32,7 +32,21 @@
 // @require        http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js
 // @require        http://userscripts.org/scripts/source/106368.user.js
 // @require        http://userscripts.org/scripts/source/106223.user.js
+// @require        http://userscripts.org/scripts/source/112968.user.js
 //
+// @history        0.033 Fixed mute button due to change in G+ DOM 
+// @history        0.033 Removed a redundant polling option for slight improvement in performance 
+// @history        0.033 Fixed detection of current post, so post shortcuts should work again (M, C, T etc.) 
+// @history        0.033 Fixed tweaks menu not showing up after enabling post previews 
+// @history        0.033 Readability no longer enabled by default for installs 
+// @history        0.033 Fixed profile name position when using full width 
+// @history        0.033 Fixed share box on stream being pushed off to the right making it impossible to close it with the "X" 
+// @history        0.033 Fixed layout of photo albums when using full width
+// @history        0.033 Fixed comment and post edit boxes having grey background in Firefox
+// @history        0.033 Fixed Google+ copyright to bottom of window instead of stuck over stream
+// @history        0.033 Added option to hide Google+ copyright completely
+// @history        0.033 Fixed extra space above stream when using fixed navigation in Chrome
+// @history        0.033 Added option to parse Markdown in posts
 // @history        0.032 Fixed easy mentions
 // @history        0.032 Fixed inability to disable inlune plusses and shares
 // @history        0.032 Fixed inability plusses not showing up
@@ -135,7 +149,7 @@
 //
 // ==/UserScript==
 
-var version = 0.32;
+var version = 0.33;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -242,7 +256,7 @@ function populateSelectors() {
 			s.streamIncomingNotice = s.streamContent + ' ' + (Config.get('selectorStreamIncomingNotice') != '' ? Config.get('selectorStreamIncomingNotice') : '.nope');
 		s.streamRightCol = s.streamContent + ' + div'
 			s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
-				s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + a';
+				s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + div > a:first-child';
 		s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
 			s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
 		s.streamNotificationCol = s.stream + ' ' + (Config.get('selectorStreamNotificationCol') != '' ? Config.get('selectorStreamNotificationCol') : '.nope');		// When in notifications: #contentPane *class only* > div:first-child
@@ -255,7 +269,7 @@ function populateSelectors() {
 		s.profileContent = s.profile + ' .vcard > div:first-child'; 
 		s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
 	s.post = 'div[id^="update"]';
-		s.postSelected = s.post + Config.get('selectorCurrentPost');		// you just have to figure out what class they're using
+		s.postSelected = s.post + '.rh';		// you just have to figure out what class they're using
 		dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
 			dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
 			dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
@@ -361,7 +375,7 @@ function GTweaks() {
 				label:'Readability',
 				type:'checkbox',
 				description:'Improve readibility by shifting the focus to posts',
-				'default':true
+				'default':false
 			},
 			"postPreviews":{
 				label:'Post Previews',
@@ -390,6 +404,12 @@ function GTweaks() {
 				label:'Easy Mentions',
 				type:'checkbox',
 				description:'Add links next to names in posts to easily mention them',
+				'default':true
+			},
+			"markdown":{
+				label:'Parse Markdown',
+				type:'checkbox',
+				description:'Parse <a href="http://en.wikipedia.org/wiki/Markdown" target="_blank">markdown</a> in posts and comments',
 				'default':true
 			},
 			"imagePreviews":{
@@ -484,6 +504,15 @@ function GTweaks() {
 				label:'Send Invites',
 				type:'checkbox',
 				description:'Hide the "Send Invites" section'
+			},
+			"hideCopyrightLabel":{
+				type:'html',
+				text:'<p"> </p>'
+			},
+			"hideCopyright":{
+				label:'Copyright',
+				type:'checkbox',
+				description:'Hide Google+ copyright footer'
 			}
 		},
 		"Selectors":{
@@ -582,6 +611,79 @@ function GTweaks() {
 		}
 	};
 	this.features = {
+		markdown:{
+			
+			processPost:function(post) {
+				if(Config.get('markdown') && !post.className.match(/mdParsed/) && !document.location.toString().match(/\/sparks\//)) {
+	 				post.className += ' mdParsed';
+	 				
+	 				function parseMarkdown(elem) {
+	 					if(!elem.className.match(/mdParsed/)) {
+		 					elem.className = "mdParsed";
+		 		 			var converter = new Showdown.converter();
+		 					
+		 		 			// return Google+ translated links back to plain text
+		 		 			$('a', elem).each(function() {
+		 		 				if(this.className != 'proflink') {
+			 		 				$(this).after($(this).text());
+			 		 				$(this).remove();
+		 		 				}
+		 		 			});
+		 		 			
+		 		 			
+		 		 			elem.innerHTML = elem.innerHTML
+		 		 							.replace(/<\/?i><\/?b>/g, "***")
+		 		 							.replace(/<\/?b><\/?i>/g, "***")
+		 		 							.replace(/<\/?b>/g, "__")
+		 		 							.replace(/<\/?i>/g, "*")
+		 		 							.replace(/<br>/g, "\n")
+		 		 							
+		 		 							//.replace(/"http/g, '"_ttp')
+		 		 							
+		 		 			
+		 					//var text = this.innerHTML;
+		 					var text = elem.innerHTML;
+		 					text = text.replace(/&gt;/g, '>');//.replace(/>/g, '&gt;');
+//		 					text = text.replace(/</g, '&lt;');//.replace(/>/g, '&gt;');
+		 					
+		 					text = converter.makeHtml(text);
+		 					
+		 					// reparse unparsed URLs to links
+		 					var startingLinks = /^(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					text = text.replace(startingLinks, '<a href="$1">$1</a>');
+		 					var embeddedLinks = /([^"])(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					text = text.replace(embeddedLinks, '$1<a href="$2">$2</a>');
+		 					var quotedLinks = /"(\b(_ttps?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					text = text.replace(quotedLinks, '"<a href="$1">$1</a>')
+		 						.replace(/"_ttp/g, '"http')
+		 						.replace(/>_ttp/g, '>http');
+		 					
+		 					elem.innerHTML = text;
+	 					}
+	 				}
+	 				
+	 				$('div:first-child > div:first-child + div > div:first-child > div:first-child > div:first-child', post).each(function() {
+	 				//	parseMarkdown($(this).parent().next());
+	 					parseMarkdown(this);
+	 					
+	 					
+	 					$('span[role="button"]', $(this).parent()).click(function() {
+	 						var parent = $(this).parent();
+	 						var targetOne = $('div:first-child', $(this).parent().parent());
+	 						function check() {
+	 							if(targetOne.text() != '') {
+	 								parseMarkdown($('div:first-child', parent.next())[0]);
+	 							} else {
+	 								setTimeout(check, 100);
+	 							}
+	 						}
+	 						setTimeout(check, 100);
+	 					});
+		 			});
+	 			}
+	 			
+			}
+		},
 		favicon: {
 			src: 'data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AJubm3guLi7/Ly8v/zExMf8yMjL/MjIy/zMzM/8yMjL/MjIy/zExMf8vLy//Li4u/y0tLf+enp50////AP///wAvLy//MTEx/zMzM/80NDT/NTU1/zY2Nv8mJib/JiYm/zU1Nf80NDT/MjIy/zAwMP8uLi7/LS0t/////wD///8AMjIy/zQ0NP82Njb/ODg4/zo6Ov87Ozv/09HR/9PR0f86Ojr/ODg4/zY2Nv80NDT/MjIy/y8vL/////8A////ADU1Nf84ODj/Ozs7/z09Pf8/Pz//QEBA/+Pi4v/j4uL/Pz8//z09Pf87Ozv/ODg4/zU1Nf8yMjL/////AP///wA5OTn/PDw8/z8/P/8tLS3/Ly8v/y8vL//o5+f/6Ofn/y8vL/8tLS3/LCws/zw8PP85OTn/NTU1/////wD///8APDw8/0BAQP9CQkL/7ezs/+3s7P/t7Oz/7ezs/+3s7P/t7Oz/7ezs/+3s7P8/Pz//Ozs7/zg4OP////8A////AD8/P/9CQkL/RUVF//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/QkJC/z4+Pv86Ojr/////AP///wBAQED/RERE/0dHR/9JSUn/SUlJ/0lJSf/29fX/9vX1/0lJSf9JSUn/R0dH/0RERP9AQED/PDw8/////wD///8AQkJC/0ZGRv9ISEj/SUlJ/0lJSf9JSUn/+fn5//n5+f9ISEj/SEhI/0dHR/9GRkb/QkJC/z4+Pv////8A////AENDQ/9HR0f/SUlJ/0lJSf9JSUn/SUlJ//39/f/9/f3/SUlJ/0lJSf9JSUn/R0dH/0NDQ/8/Pz//////AP///wBERET/R0dH/0lJSf9JSUn/SUlJ/0lJSf9JSUn/SUlJ/0lJSf9JSUn/SUlJ/0dHR/9DQ0P/Pz8//////wD///8ANzc3/zo6Ov88PDz/PDw8/zw8PP88PDz/PDw8/zw8PP88PDz/PDw8/zw8PP86Ojr/Nzc3/zQ0NP////8A////AA8P1f8PD9X/Dw/V/+hpM//oaTP/6Gkz/+hpM/8lmQD/JZkA/yWZAP8mkwP/EbLu/xGy7v8Rsu7/////AP///wCHh+p+Dw/V/w8P1f/oaTP/6Gkz/+hpM//oaTP/JZkA/yWZAP8lmQD/JpQE/xGy7v8Rsu7/jNr2ef///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A//8AAMADAACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAADAAwAA//8AAA%3D%3D', 
 			icon: null,
@@ -608,15 +710,15 @@ function GTweaks() {
 				var rightColOffset = ($(window).width() / 2) + 280;
 				
 				function fixGbar(height) {
-					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; }');
-					$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
+					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; } #content { position:absolute; top:90px; }');
+					//$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
 				}
 				switch(Config.get('fixedNav')) {
 					case 'gBar':
-						fixGbar(30);
+						fixGbar(0);
 						break;
 					case 'all':
-						fixGbar(92);
+						fixGbar(navigator.userAgent.match(/chrome/i) ? 0 : 29);
 						self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
 							selectors.googleBar + ' { z-index:1200; }' +
 							// stream view
@@ -646,6 +748,10 @@ function GTweaks() {
 		fullWidth: {
 			init: function() {
 				if(Config.get('fullWidth')) {
+					// hide Google+ footer/copyright 
+					$('#content').next().attr('style', 'position:fixed; bottom:0; background-color:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; line-height:15px;');
+					$('*', $('#content').next()).attr('style', 'line-height:15px; margin:0; ');
+					
 					var s = selectors;
 					//var streamLeftColWidth = $(s.streamLeftCol).width() + 20; alert(streamLeftColWidth);
 					var streamLeftColWidth = 188;
@@ -670,7 +776,7 @@ function GTweaks() {
 						selectors.contentPane + ' { width:100%; }' +
 						selectors.contentPane + ' > div { width:100% !important; }' +
 						selectors.contentPane + ' > div > div { width:100% !important; }' +
-						selectors.contentPane + ' > div > div > div { width:100% !important; }' +
+						selectors.contentPane + ' > div > div > div { width:100% !important; margin-left:0 !important; }' +
 						
 						// all direct discendants of content pane should be 100% with no margins
 						s.contentPane + ' > div:first-child > div { width:100%; margin:0 !important; }' +
@@ -696,10 +802,15 @@ function GTweaks() {
 						// profile
 						s.profile + ', ' +  s.profileContent + ' { width:' + profileWidth +'px !important; }' +
 						s.profileContent + ' { margin-left:' + profileLeftColWidth + 'px !important; }' +
+						// profile name
+						s.profileContent + ' > div:first-child > div:first-child + div { margin-left:0px !important; }' +
 						
 						// photos
 						'#content ' + s.photosLeftCol + ' { width:192px !important; }' +
 						'#content ' + s.photosRightCol + ' { width:180px !important; }' +
+						'#contentPane div[token^="photos"] > div:first-child { width:100% !important; }' +
+						// photos left column for individual
+						'#contentPane div[token^="photos"] > div:first-child + div { width:180px !important; }' +
 						
 						'');
 				}
@@ -1205,7 +1316,7 @@ function GTweaks() {
 		},
 		readability: {
 			init: function() {
-				if(Config.get('readability')) {
+				if(Config.get('readability') && $('#content').size() == 1) {
 					var bgColor = '#f1f1f1';
 					self.addStyle(
 							'body { background:' + bgColor + ' !important; }' +
@@ -1214,7 +1325,7 @@ function GTweaks() {
 							selectors.content + ' { border-top:none; }' +
 							selectors.content + ' > div:first-child { background:' + bgColor + '; }' +
 							selectors.profileContent + ', #contentPane { background:' + bgColor + '; border:none; }' +
-							selectors.post + ' { margin-top:4px; border:1px solid #d2d2d2; border-top:1px solid #d2d2d2 !important; }' +
+							selectors.post + ' { margin-top:4px; border:1px solid #d2d2d2; border-top:1px solid #d2d2d2 !important; padding-bottom:0; }' +
 							selectors.postSelected + '{ border-color:#cc3333 !important; }'
 					);
 				}
@@ -1273,6 +1384,7 @@ function GTweaks() {
 			
 			
 			
+			if(Config.get('hideCopyright')) css += '#content + div { display:none !important; }';
 			if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
 			if(Config.get('hideWelcomeLink')) css += selectors.streamWelcomeLink + ', ' + selectors.streamWelcomeLink + ' + div { display:none; }';
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
@@ -1345,6 +1457,8 @@ function GTweaks() {
  	};
  	this.startPolling = function() {
  		
+ 		
+ 		
  		// auto detect main classes
  		if(Config.get('selectorAutoUpdate')) updateSelectors();
  		
@@ -1353,13 +1467,15 @@ function GTweaks() {
  			self.detectElementClass(x, dynamicSelectors[x]);
  		}
  		
+ 		
+ 		
  		// poll posts
  		$(selectors.post).each(function() {
  			var post = this; 
  			
  			// detect mute button class
- 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 4) {
- 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(2).attr('class').replace(/\s+/g, '.');
+ 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 3) {
+ 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(1).attr('class').replace(/\s+/g, '.');
  				self.muteButtonClassFound = true;
  				if(Config.get('selectorMuteButton') != muteButtonSelector) {
  					Config.set('selectorMuteButton', muteButtonSelector);
@@ -1378,10 +1494,8 @@ function GTweaks() {
  		
  		// fire feature polls
  		for(var i = 0; i < self.pollFuncions.length; i++) {
- 			self.pollFuncions[i]();
- 		}
- 		for(var i = 0; i < self.pollFuncions.length; i++) {
- 			self.pollFuncions[i]();
+ 			if(typeof(self.pollFuncions[i]) == 'function')
+ 				self.pollFuncions[i]();
  		}
  		setTimeout(self.startPolling, self.pollInterval);
  	};
