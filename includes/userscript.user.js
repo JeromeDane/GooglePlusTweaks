@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.33
+// @version        0.341
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -34,6 +34,10 @@
 // @require        http://userscripts.org/scripts/source/106223.user.js
 // @require        http://userscripts.org/scripts/source/112968.user.js
 //
+// @history        0.0341 Quick fix for links on new lines not getting parsed in markdown 
+// @history        0.034 Scrapped full width code and started over to simplify things and get rid of a lot of bugs 
+// @history        0.034 Fixed a lot of fixed navigation errors
+// @history        0.034 Changed primary post processing method from polling to DOM node insertion event handling
 // @history        0.033 Fixed mute button due to change in G+ DOM 
 // @history        0.033 Removed a redundant polling option for slight improvement in performance 
 // @history        0.033 Fixed detection of current post, so post shortcuts should work again (M, C, T etc.) 
@@ -149,7 +153,7 @@
 //
 // ==/UserScript==
 
-var version = 0.33;
+var version = 0.341;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -168,17 +172,17 @@ function detectWidthRestrictor() {
 	var widthInhibiterWidthPattern = /574/;
 	// selectorWidthRestrictor
 	var inhibiterSelctor = '';
-	$(s.contentPane + ' div').each(function() {
-		if($(this).css('width').match(widthInhibiterWidthPattern)) {
-			// determine classes of width inhibitor
-			var classes = this.className.split(" ");
-			// test for specific width inhibitor class
-			for(var i = 0; i < classes.length; i++) {
-				var selector = '.' + classes[i];
-				if($(selector).css('width').match(widthInhibiterWidthPattern))
-					inhibiterSelctor += selector + ', ';
-			}
+	$(s.contentPane + ' *[width=574]').each(function() {
+		
+		// determine classes of width inhibitor
+		var classes = this.className.split(" ");
+		// test for specific width inhibitor class
+		for(var i = 0; i < classes.length; i++) {
+			var selector = '.' + classes[i];
+			if($(selector).css('width').match(widthInhibiterWidthPattern))
+				inhibiterSelctor += selector + ', ';
 		}
+		
 	});
 	if(inhibiterSelctor != '') {
 		Config.set('selectorWidthRestrictor', inhibiterSelctor.replace(/,\s*$/, ''));
@@ -243,16 +247,10 @@ function populateSelectors() {
 	
 	s.postCommentEditorMention = 'f-IE';
 	
-	s.gamesWrapper = s.content + ' .d7';
-		s.gamesLeftCol = s.gamesWrapper + ' .vZ';
-		s.gamesContent = s.gamesWrapper + ' .PP';
-		s.gamesStream = s.gamesContent + ' .BZ';
-		s.gamesAllGamesWrapper = s.gamesContent + ' .rZ';
-		s.gamesAllGamesGameWrapper = s.gamesAllGamesWrapper + ' .b7';
 	s.stream = s.content + ' ' + Config.get('selectorMainWrapper');
 		s.streamLeftCol = s.stream + ' > div:first-child';
 		s.streamContent = s.stream + ' ' + Config.get('selectorStreamContent');				// #contentPane *class only* when in stream view (don't include ID)
-			s.streamShareWrapper = '.h-ZA-da-o';
+			s.streamShareWrapper = s.streamContent + ' > div:first-child > div:first-child + div';
 			s.streamIncomingNotice = s.streamContent + ' ' + (Config.get('selectorStreamIncomingNotice') != '' ? Config.get('selectorStreamIncomingNotice') : '.nope');
 		s.streamRightCol = s.streamContent + ' + div'
 			s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
@@ -304,7 +302,7 @@ function populateSelectors() {
 			var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + debugAlign + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
 			html += '</div>';
 			function debugSelectors() {
-				var html = '<p>Selectors Found:</p>';
+				var html = '<p>Selectors Found:</p>';s
 				for(var x in selectors) {
 					var elem = $(selectors[x])
 					var numFound = elem.size();
@@ -614,7 +612,9 @@ function GTweaks() {
 		markdown:{
 			
 			processPost:function(post) {
-				if(Config.get('markdown') && !post.className.match(/mdParsed/) && !document.location.toString().match(/\/sparks\//)) {
+				
+				if(Config.get('markdown') && !post.className.match(/mdParsed/)) {
+					
 	 				post.className += ' mdParsed';
 	 				
 	 				function parseMarkdown(elem) {
@@ -629,7 +629,6 @@ function GTweaks() {
 			 		 				$(this).remove();
 		 		 				}
 		 		 			});
-		 		 			
 		 		 			
 		 		 			elem.innerHTML = elem.innerHTML
 		 		 							.replace(/<\/?i><\/?b>/g, "***")
@@ -651,21 +650,22 @@ function GTweaks() {
 		 					// reparse unparsed URLs to links
 		 					var startingLinks = /^(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(startingLinks, '<a href="$1">$1</a>');
-		 					var embeddedLinks = /([^"])(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					var embeddedLinks = /(\S|\s|[a-z0-9]|\(|\[|\{)(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(embeddedLinks, '$1<a href="$2">$2</a>');
+		 					
+		 					
+		 					/*
 		 					var quotedLinks = /"(\b(_ttps?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(quotedLinks, '"<a href="$1">$1</a>')
 		 						.replace(/"_ttp/g, '"http')
 		 						.replace(/>_ttp/g, '>http');
-		 					
+		 					*/
 		 					elem.innerHTML = text;
 	 					}
 	 				}
-	 				
+
 	 				$('div:first-child > div:first-child + div > div:first-child > div:first-child > div:first-child', post).each(function() {
-	 				//	parseMarkdown($(this).parent().next());
 	 					parseMarkdown(this);
-	 					
 	 					
 	 					$('span[role="button"]', $(this).parent()).click(function() {
 	 						var parent = $(this).parent();
@@ -679,6 +679,8 @@ function GTweaks() {
 	 						}
 	 						setTimeout(check, 100);
 	 					});
+	 					
+	 					// todo: listen for change to body and re-parse after edit save
 		 			});
 	 			}
 	 			
@@ -706,7 +708,7 @@ function GTweaks() {
 		},
 		fixedNavigation: {
 			init: function() {
-				var leftWidth = $(selectors.streamLeftCol).width();
+				var leftWidth = 188;
 				var rightColOffset = ($(window).width() / 2) + 280;
 				
 				function fixGbar(height) {
@@ -722,20 +724,30 @@ function GTweaks() {
 						self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
 							selectors.googleBar + ' { z-index:1200; }' +
 							// stream view
-							selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' +
-							selectors.streamRightCol  + ' { position:fixed !important; top:90px; ' + 
+							selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
+							selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth + 10) + 'px; }' +
+							selectors.streamRightCol  + ' { position:fixed !important; top:90px !important; ' + 
 								(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
 							' }' +
-							selectors.streamNotificationCol + ', ' + selectors.streamContent + ' { position:relative; left:' + ($(selectors.streamLeftCol).width() + 20) + 'px; }' +
-							// games view
-							selectors.gamesLeftCol + ' { position:fixed; top:90px; }' +
-							selectors.gamesContent + ' { position:absolute; left:190px; }' +
+							selectors.streamNotificationCol + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
+							// profile (normal)
+							selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+							// profile (with pics)
+							selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+							// profile (verified with pics - scoble)
+							selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+							// personal profile
+							selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+							//selectors.profileContent  + ' { position:absolute; top:90px; left:260; }' + 
+							''
+							/*
 							// pictures view
 							selectors.photosLeftCol + ' { position:fixed; top:90px; }' +
 							// profile view
 							selectors.profileLeftCol + ' { position:fixed; top:90px; ' + 
 								(Config.get('fullWidth') ? '' : 'left:' + (rightColOffset - 760) + 'px;') +
-							' }' 
+							' }'
+							*/ 
 						);
 						// make the doc scroll to the top on top grey bar button click
 						$(selectors.streamLinksWrapper).click(function() {
@@ -746,74 +758,58 @@ function GTweaks() {
 			}
 		},
 		fullWidth: {
-			init: function() {
+			init: function() {	
 				if(Config.get('fullWidth')) {
-					// hide Google+ footer/copyright 
-					$('#content').next().attr('style', 'position:fixed; bottom:0; background-color:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; line-height:15px;');
-					$('*', $('#content').next()).attr('style', 'line-height:15px; margin:0; ');
 					
 					var s = selectors;
-					//var streamLeftColWidth = $(s.streamLeftCol).width() + 20; alert(streamLeftColWidth);
+
+					var docWidth = $(window).width();
 					var streamLeftColWidth = 188;
-					//var streamRightColWidth = $(s.streamRightCol).width() + 10; alert(streamRightColWidth);
 					var streamRightColWidth = Config.get('hideRightCol') ? 0 : 205;
-					
-					var streamNotificationWidth = $(window).width() - streamLeftColWidth; 
-					var streamContentWidth = streamNotificationWidth - streamRightColWidth;
-					
-					var contentWidth = $(window).width() - streamLeftColWidth - $(selectors.streamRightCol).width();
-					var notificationWidth = $(window).width() - streamLeftColWidth - 25;
-					
 					var profileLeftColWidth = 232;
-					var profileWidth = $(window).width() - profileLeftColWidth - 5;
-					
-					var gameContentWidth = $(window).width() - 190;
 					
 					self.addStyle(
-						// global and general
-						selectors.stream + ', ' + selectors.content + ', ' + s.widthRestrictor + ' { width:100% !important; }' +
-						selectors.stream + ' { width:' + $(window).width() + 'px !important; }' +
-						selectors.contentPane + ' { width:100%; }' +
-						selectors.contentPane + ' > div { width:100% !important; }' +
-						selectors.contentPane + ' > div > div { width:100% !important; }' +
-						selectors.contentPane + ' > div > div > div { width:100% !important; margin-left:0 !important; }' +
-						
-						// all direct discendants of content pane should be 100% with no margins
-						s.contentPane + ' > div:first-child > div { width:100%; margin:0 !important; }' +
-						
 						// stream
-						s.streamLeftCol + ', ' + s.streamNotificationCol + ' { float:left; width:' + (streamLeftColWidth - 20) + 'px !important; }' +				
-						s.streamRightCol + ' { position:absolute; right:10px; }' +				
-						s.streamContent + ' { width:' + streamContentWidth + 'px !important; position:absolute; left:' + streamLeftColWidth + 'px; }' +
-						s.streamIncomingNotice + ' { width:' + (streamContentWidth - 42) + 'px !important; }' +
-						s.streamIncomingNotice + ' > div { width:32px !important; }' +
-						s.streamIncomingNotice + ' > span:first-child + div { width:100% !important; }' +
-						s.streamIncomingNotice + ' > div[data-promo-type] { width:100% !important; }' +
-						s.streamNotificationCol + ' { width:' + streamNotificationWidth + 'px !important; float:left; }' +
-						// notificatio contents
-						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div { width:100%; margin:0; padding:0; }' +
-						s.streamNotificationCol + ' > div:first-child > div:first-child > div:first-child + div > div > div > div { margin-left:20px; margin-right:20px; }' +
-						
-						// stream title and share wrapper margins
-						s.streamContent + ' > div:first-child > div:first-child > span { display:block; padding:15px 20px 10px 0; }' +
+						s.stream + ' { width:' + (docWidth - 20) + 'px; } ' +
+						s.streamRightCol + ' { position:absolute; right:10px; top:0; }' +
+						s.streamContent + ' { width:' + (docWidth - streamLeftColWidth - streamRightColWidth - 20) + 'px; }' +
 						s.streamShareWrapper + ' { width:100% !important; }' +
-						s.streamShareWrapper + ' > div:first-child  { margin:0 20px; }' +
-						
+						s.streamContent + ' > div:first-child > div { margin-left:0; margin-right:0; }' +
+						// notifications
+						s.streamNotificationCol + ' { width:' + (docWidth - streamLeftColWidth - 25) + 'px !important; }' +
 						// profile
-						s.profile + ', ' +  s.profileContent + ' { width:' + profileWidth +'px !important; }' +
-						s.profileContent + ' { margin-left:' + profileLeftColWidth + 'px !important; }' +
-						// profile name
-						s.profileContent + ' > div:first-child > div:first-child + div { margin-left:0px !important; }' +
-						
-						// photos
-						'#content ' + s.photosLeftCol + ' { width:192px !important; }' +
-						'#content ' + s.photosRightCol + ' { width:180px !important; }' +
-						'#contentPane div[token^="photos"] > div:first-child { width:100% !important; }' +
-						// photos left column for individual
-						'#contentPane div[token^="photos"] > div:first-child + div { width:180px !important; }' +
-						
-						'');
+						s.profileContent + ' { width:' +  (docWidth - 260) + 'px !important; }' +
+					'');
+					
 				}
+			},
+			adjustNotificationView:function() {
+				var s = selectors;
+				var docWidth = $(window).width();
+				var leftColWidth = 188;
+				
+				// notifications stream
+				if(document.location.toString().match(/\/notifications\//)) {
+					var basePath = s.streamNotificationCol + ' > div > div';
+					$(basePath).css('width', '100%');
+					$(basePath + ' > div:first-child + div > div[data-nid] > div').css('width', docWidth - leftColWidth - 50);
+				}
+				
+			},
+			onViewChange:function() {
+				self.features.fullWidth.adjustNotificationView();
+
+				//stream view (reposition and expand width of share box)
+				if(document.location.toString().match(/\/$/) || document.location.toString().match(/\/stream\//)) {
+					var base = '#contentPane > div > div > div';
+					$(base).css('margin-left', '0');
+					$(base).css('width', '100%');
+				}
+
+			},
+			processPost:function() {
+				// doesn't actually process a post. Uses new posts as a trigger to resize required elements
+				self.features.fullWidth.adjustNotificationView();
 			}
 		},
 		inlinePlusShare: {
@@ -826,37 +822,32 @@ function GTweaks() {
 				}
 			},
 			processPost:function(post) {
-				if(Config.get('inlinePlusShare')) {	
-					$(selectors.postPlussesAndShares, post).each(function() {
-						$(this).css('display', 'none');
-//						$(this).css('height', '1px');
-//						$(this).css('overflow', 'hidden');
-						// plusses
-						$(selectors.postPlussesWrapper, this).each(function() {
-							var plusses = $(selectors.postPlusses, this);
-							
-							if(plusses.size() == 1) {
-								plusses.attr('name', 'inlinePlusHack');
-								$(selectors.postPlusOneButton, post).after(plusses);
-								if(plusses.next().text().match(/\d/)) {
-									plusses.remove();
-								}
-								$(this).remove();
-							}
-						});
-						// shares
-						$(selectors.postSharesWrapper, this).each(function() {
-							$('.inlineSharesHack:eq(0)', post).next().remove();			// strip any existing hacks
-							$('.inlineSharesHack', post).remove();			// strip any existing hacks
-							var shares = $(selectors.postShares, this);
-							$(selectors.postShareButton, post).after(shares);
-							$(selectors.postShareButton, post).after(' <span class="inlineSharesHack">(</span>');
-							$(shares).after('<span class="inlineSharesHack">)</span>');
-							$(shares).html($(shares).html().replace(/[^\d]/g, '') + '');
-							$(this).remove();
-						});
-						$(this).html('');
-					});
+				if(Config.get('inlinePlusShare')) {
+					var postBody = getPostBody(post);
+					var buttonsWrapper = $(postBody).next()[0];
+					var statWrapper = $(postBody).next().next()[0];
+					if(statWrapper) {
+						//statWrapper.style.display = 'none';
+						var plussesWrapper = statWrapper.querySelector('div:first-child');
+						if(plussesWrapper) {
+							var plusses = plussesWrapper.querySelector('div:first-child');
+							var plusButton = buttonsWrapper.querySelector('button');
+							$(plusButton).after(plusses);
+						}
+						var sharesWrapper = statWrapper.querySelector('div:first-child + div');
+						if(sharesWrapper) {
+							try {				// there isn't always a share button (e.g. locked albums etc.)
+								var shares = sharesWrapper.querySelector('span:first-child');
+								var shareButton = buttonsWrapper.querySelectorAll('span[role="button"]')[1];
+								$(shareButton).after(shares);
+								$(shareButton).after(' (');
+								$(shares).after(')');
+								$(shares).html($(shares).html().replace(/[^\d]/g, '') + '');
+							} catch(e) {}
+						}
+						$(statWrapper).before('<div style="display:none;" class="statWrapHider">&nbsp;</div>');
+						$('.statWrapHider', post).append(statWrapper);
+					}
 				}
 			}
 		},
@@ -971,7 +962,7 @@ function GTweaks() {
 					}
 				});
 			},
-			processPosts: function() {
+			processPosts: function(post) {
 				self.features.imagePreviews.enableTarget(selectors.userContentImages);
 			}
 		},
@@ -1003,68 +994,92 @@ function GTweaks() {
 			},
 			processPost: function(post) {
 				if(Config.get('comments')) {
-					var hasBeenCollapsed = false;
-					$(selectors.postCommentsWrapper, post).each(function() {
-						var _comments = this;
+					try {
+						var hasBeenCollapsed = false;
+						
+						var postBody = getPostBody(post);
+						var commentsWrapper = $(postBody).parent().next()[0];
+						
+						var _comments = commentsWrapper;
+						var buttonsWrapper = $(postBody).next()[0];
+						var postComment = buttonsWrapper.querySelectorAll('span[role="button"]')[0];
+						
 						function getNumComments() {
-							return ($(selectors.postCommentsNumBar, _comments).text().replace(/[^\d]/g, ''));
+							numWrapper = commentsWrapper.querySelector('div:first-child > span:first-child + div > span:first-child')
+							if(!numWrapper)
+								numWrapper = commentsWrapper.querySelector('div:first-child > div:first-child > span:first-child');
+							
+							return parseInt(numWrapper.innerHTML.replace(/[^\d]/g, ''));
 						}
-						function showComments() {
-							if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
-								$(_comments).css('height', 'auto');
-								$(_comments).css('visibility', 'visible');
-								
-								_comments.className = _comments.className.replace(/bcTweaksHiddenComments/, '');
+						
+						function updateComments() {
+						
+							
+							function showComments() {
+								if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+									$(_comments).css('height', 'auto');
+									$(_comments).css('visibility', 'visible');
+									
+									_comments.className = _comments.className.replace(/bcTweaksHiddenComments/, '');
+								}
 							}
-						}
-						function hideComments() {
-							_comments.className += ' bcTweaksHiddenComments';
-							$(_comments).css('height', '0');
-							$(_comments).css('overflow', 'hidden');
-							$(_comments).css('visibility', 'hidden');
-							// scroll to top of post
-							if(hasBeenCollapsed) {
-								var postTop = $(post).offset().top - 120;
-								//alert(postTop);
-								$(document).scrollTop(postTop);
+							function hideComments() {
+								_comments.className += ' bcTweaksHiddenComments';
+								$(_comments).css('height', '0');
+								$(_comments).css('overflow', 'hidden');
+								$(_comments).css('visibility', 'hidden');
+								// scroll to top of post
+								if(hasBeenCollapsed) {
+									var postTop = $(post).offset().top - 120;
+									//alert(postTop);
+									$(document).scrollTop(postTop);
+								}
+								hasBeenCollapsed = true;
 							}
-							hasBeenCollapsed = true;
-						}
-						numTotal = getNumComments();
-						if($('.bcGTweaksNumComments', post).size() == 0) {
-							if(numTotal > 0) {
-								var commentsButton = document.createElement('span');
-								commentsButton.className = 'bcGTweaksNumComments';
-								commentsButton.innerHTML = '(' + numTotal + ')';
-								var postComment = $(selectors.postCommentButton, $(this).parent().parent());
-								postComment.after(commentsButton);
-								postComment.click(function() {
-									showComments(_comments);
-								});
-								function toggleComments() {
-									if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+							numTotal = getNumComments();
+							if($('.bcGTweaksNumComments', post).size() == 0) {
+								if(numTotal > 0) {
+									var commentsButton = document.createElement('span');
+									commentsButton.className = 'bcGTweaksNumComments';
+									commentsButton.innerHTML = '(' + numTotal + ')';
+									postComment = $(postComment); 
+									postComment.after(commentsButton);
+									postComment.click(function() {
 										showComments(_comments);
-									} else {
-										hideComments(_comments);
+									});
+									function toggleComments() {
+										if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+											showComments(_comments);
+										} else {
+											hideComments(_comments);
+										}
+									}
+									$(commentsButton).click(toggleComments);
+									$('.bcGPlusTwCollapseComments.', _comments).remove(); // strip any existing buttons
+									$(_comments).append('<div class="bcGPlusTwCollapseComments" title="Collapse comments">&nbsp;</div>');
+									$('.bcGPlusTwCollapseComments', _comments).click(toggleComments);
+									hideComments(_comments);
+								} else {
+									showComments(_comments);
+								}
+							} else {
+								var oldNum = parseInt($('.bcGTweaksNumComments', post).text().replace(/[^\d]/g, ''));
+								if(numTotal != oldNum) {
+									$('.bcGTweaksNumComments', post).html('(' + numTotal + ')');
+									if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
+										$(_comments).next().hide(); // hide the "add comments" box
 									}
 								}
-								$(commentsButton).click(toggleComments);
-								$(_comments).append('<div class="bcGPlusTwCollapseComments" title="Collapse comments">&nbsp;</div>');
-								$('.bcGPlusTwCollapseComments', _comments).click(toggleComments);
-								hideComments(_comments);
-							} else {
-								showComments(_comments);
-							}
-						} else {
-							var oldNum = parseInt($('.bcGTweaksNumComments', post).text().replace(/[^\d]/g, ''));
-							if(numTotal != oldNum) {
-								$('.bcGTweaksNumComments', post).html('(' + numTotal + ')');
-								if(parseInt($(_comments).css('height').replace(/[^\d]/g, '')) < 5) {
-									$(_comments).next().hide(); // hide the "add comments" box
-								}
 							}
 						}
-					});
+						_comments.addEventListener ("DOMNodeInserted", function() {
+							updateComments();
+						}, false);
+						
+						
+						
+						
+					} catch(e) {}
 				}
 			}
 		},
@@ -1252,10 +1267,9 @@ function GTweaks() {
 							switch(e.which.toString()) {
 								case '77':	// "M"
 									var postToMute = $(selectors.postSelected);
-									var muteButton = $(selectors.postMuteButton, postToMute).css('background', 'red');
-									if(muteButton.size() > 0) {
-										simulateClick(muteButton[0]);
-										simulateClick(postToMute.next()[0]);
+									var mb = $(selectors.postMuteButton, postToMute);
+									if(mb.size() > 0) {
+										simulateClick(mb[0]);
 									}
 									break;
 							}
@@ -1265,30 +1279,27 @@ function GTweaks() {
 			},
 			processPost: function(post) {
 				try {
-					$(selectors.postButton, post).each(function() {
-						try {
-							if($('.bcGTweaksMute', post).size() == 0) {
-								var _this = this;
-								setTimeout(function() {
-									var m = document.createElement('div');
-									m.className = 'bcGTweaksMute';
-									m.innerHTML = '&nbsp;';
-									m.style.cursor = 'pointer';
+					var postButton = post.querySelector('div:first-child > div:first-child > span');
+					if($('.bcGTweaksMute', post).size() == 0) {
+						var _this = postButton;
+						setTimeout(function() {
+							var m = document.createElement('div');
+							m.className = 'bcGTweaksMute';
+							m.innerHTML = '&nbsp;';
+							m.style.cursor = 'pointer';
+							var mb = $(selectors.postMuteButton, post)[0];
+							if(mb) {
+								$(_this).before(m);
+								m.title = $(mb).text();
+								$(m).click(function() {
 									var mb = $(selectors.postMuteButton, post)[0];
-									if(mb) {
-										$(_this).before(m);
-										m.title = $(mb).text();
-										$(m).click(function() {
-											var mb = $(selectors.postMuteButton, post)[0];
-											if(mb) simulateClick(mb);
-										});
-									}
-								}, 500);
+									if(mb) simulateClick(mb);
+								});
 							}
-						} catch(e) { console.log(e); }
-					});
+						}, 500);
+					}
 				} catch(e) {
-					console.log(e);
+					alert(e);
 				}
 			}
 		},
@@ -1332,30 +1343,12 @@ function GTweaks() {
 			}
 		},
 		thumbnailsOnly: {
-			init: function() {
-				if(Config.get('thumbsOnly')) self.addPolling(self.features.thumbnailsOnly.processThumbs);
-			},
-			processThumbs: function() {
-				var maxHeight = 46;
+			processPost: function(post) {
+				var maxHeight = 50;
 				var maxWidth = 62;
-				$(selectors.post + ' ' + selectors.postImages).each(function() {
-					if($(this).height() > maxHeight && $(this).width() > maxHeight) {
-						var parentWrapper = $(this).parent();
-						function shrinkParentWrapper() {
-							parentWrapper.height(maxHeight);		// reduce height of container
-							parentWrapper.width(maxWidth);		// reduce width of container
-						}
-						if(this.src.match(/(jpg|jpeg|png|gif)$/i)) {
-							var file = this.src.match(/[^\/]+$/)[0];	
-							var newSrc = this.src.replace(/[^\/]+\/[^\/]+$/, '') + 'w' + maxWidth + '-h' + maxHeight + '-p/' + file;
-							this.src = newSrc;
-							shrinkParentWrapper();
-						} else if($(playVideoIconSelector, parentWrapper).size() == 0) {
-							$(this).css('max-height', maxHeight);
-							$(this).css('max-width', maxWidth);
-							shrinkParentWrapper();
-						}
-					}
+				$('img[src*="googleusercontent"]', post).each(function() {
+					this.style.maxHeight = maxHeight + 'px';
+					this.style.maxWidth = maxWidth + 'px';
 				});
 			}
 		}
@@ -1455,10 +1448,78 @@ function GTweaks() {
  			}
  		}
  	};
+ 	this.processPost = function(post) {
+ 		self.processPostBody(getPostBody(post));
+ 		// launch feature processPost functions
+		for(var k in self.features) {
+			var feature = self.features[k];
+			if(typeof(feature.processPost) == 'function') {
+				feature.processPost(post);
+			}
+		}
+ 	};
+ 	this.processPostBody = function(postBody) {
+ 		// launch feature processPostBody functions
+ 		for(var k in self.features) {
+ 			var feature = self.features[k];
+ 			if(typeof(feature.processPostBody) == 'function') {
+ 				feature.processPostBody(postBody);
+ 			}
+ 		}
+ 	};
+ 	this.processView = function() {
+ 		// launch feature processPostBody functions
+ 		for(var k in self.features) {
+ 			var feature = self.features[k];
+ 			if(typeof(feature.onViewChange) == 'function') {
+ 				feature.onViewChange();
+ 			}
+ 		}
+ 	};
  	this.startPolling = function() {
+
+ 		function contentPaneChanged() {
+ 			
+ 			// check for new view
+ 			if(self.oldLocation != document.location.toString()) {
+ 				self.oldLocation = document.location.toString();
+ 				self.processView();
+ 			}
+ 			
+ 			// process posts
+ 			nodes = document.querySelectorAll('#contentPane div[id^="update"]');
+ 			for (i = 0; i < nodes.length; i++) {
+ 				var n = nodes[i];
+ 				if(!n.className.match(/bcPoll/)) {
+ 					n.className += ' bcPoll';
+ 					
+					var post = n;
+ 					//n.innerHTML = $(n).text();
+					
+					
+					// detect mute button class
+		 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 3) {
+		 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(1).attr('class').replace(/\s+/g, '.');
+		 				self.muteButtonClassFound = true;
+		 				if(Config.get('selectorMuteButton') != muteButtonSelector) {
+		 					Config.set('selectorMuteButton', muteButtonSelector);
+		 					document.location = document.location;
+		 				}
+		 			}
+					
+					self.processPost(post);
+		 			
+ 					
+ 				}
+ 			}
+		}
+		
+ 		if(document.getElementById('contentPane')) {
+ 			document.getElementById('contentPane').addEventListener('DOMNodeInserted', contentPaneChanged, false);
+ 		}
+		//document.getElementById('contentPane').addEventListener('DOMNodeRemoved', contentPaneChanged, false);
  		
- 		
- 		
+		
  		// auto detect main classes
  		if(Config.get('selectorAutoUpdate')) updateSelectors();
  		
@@ -1466,31 +1527,6 @@ function GTweaks() {
  		for(var x in dynamicSelectors) {
  			self.detectElementClass(x, dynamicSelectors[x]);
  		}
- 		
- 		
- 		
- 		// poll posts
- 		$(selectors.post).each(function() {
- 			var post = this; 
- 			
- 			// detect mute button class
- 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 3) {
- 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(1).attr('class').replace(/\s+/g, '.');
- 				self.muteButtonClassFound = true;
- 				if(Config.get('selectorMuteButton') != muteButtonSelector) {
- 					Config.set('selectorMuteButton', muteButtonSelector);
- 					document.location = document.location;
- 				}
- 			}
- 			
- 			// launch feature processPost functions
- 			for(var k in self.features) {
- 				var feature = self.features[k];
- 				if(typeof(feature.processPost) == 'function') {
- 					feature.processPost(post);
- 				}
- 			}
- 		});
  		
  		// fire feature polls
  		for(var i = 0; i < self.pollFuncions.length; i++) {
@@ -1720,6 +1756,14 @@ function simulateClick(element) {
     clickEvent = document.createEvent("MouseEvents")
     clickEvent.initEvent("mouseup", true, true)
     element.dispatchEvent(clickEvent);
+}
+
+function getPostBody(post) {
+	var postBody = post.querySelector('div:first-child > div:first-child > div:first-child + div > div:first-child');						
+	if(!postBody) {
+		var postBody = post.querySelector('div:first-child > div:first-child + div > div:first-child');					
+	}
+	return postBody;
 }
 
 
