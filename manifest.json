@@ -18,5 +18,5 @@
    },
    "name": "Google+ Tweaks",
    "permissions": [ "http://plus.google.com/*", "https://plus.google.com/*", "unlimited_storage", "notifications" ],
-   "version": "0.341"
+   "version": "1"
 }

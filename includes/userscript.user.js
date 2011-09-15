@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        0.341
+// @version        1
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -34,6 +34,7 @@
 // @require        http://userscripts.org/scripts/source/106223.user.js
 // @require        http://userscripts.org/scripts/source/112968.user.js
 //
+// @history        0.035 Fixed inability to disable thumbnails only 
 // @history        0.0341 Quick fix for links on new lines not getting parsed in markdown 
 // @history        0.034 Scrapped full width code and started over to simplify things and get rid of a lot of bugs 
 // @history        0.034 Fixed a lot of fixed navigation errors
@@ -153,7 +154,7 @@
 //
 // ==/UserScript==
 
-var version = 0.341;
+var version = 1;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -1055,7 +1056,6 @@ function GTweaks() {
 										}
 									}
 									$(commentsButton).click(toggleComments);
-									$('.bcGPlusTwCollapseComments', _comments).remove(); // strip any existing buttons
 									$(_comments).append('<div class="bcGPlusTwCollapseComments" title="Collapse comments">&nbsp;</div>');
 									$('.bcGPlusTwCollapseComments', _comments).click(toggleComments);
 									hideComments(_comments);
@@ -1344,12 +1344,14 @@ function GTweaks() {
 		},
 		thumbnailsOnly: {
 			processPost: function(post) {
-				var maxHeight = 50;
-				var maxWidth = 62;
-				$('img[src*="googleusercontent"]', post).each(function() {
-					this.style.maxHeight = maxHeight + 'px';
-					this.style.maxWidth = maxWidth + 'px';
-				});
+				if(Config.get('thumbsOnly')) {
+					var maxHeight = 50;
+					var maxWidth = 62;
+					$('img[src*="googleusercontent"]', post).each(function() {
+						this.style.maxHeight = maxHeight + 'px';
+						this.style.maxWidth = maxWidth + 'px';
+					});
+				}
 			}
 		}
 	};
