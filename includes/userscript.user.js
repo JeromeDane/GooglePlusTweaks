@@ -650,7 +650,7 @@ function GTweaks() {
 		 					// reparse unparsed URLs to links
 		 					var startingLinks = /^(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(startingLinks, '<a href="$1">$1</a>');
-		 					var embeddedLinks = /(\S|\s|[a-z0-9]|\(|\[|\{)(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					var embeddedLinks = /(>|\s|[a-z0-9]|\(|\[|\{)((https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(embeddedLinks, '$1<a href="$2">$2</a>');
 		 					
 		 					
@@ -1055,7 +1055,7 @@ function GTweaks() {
 										}
 									}
 									$(commentsButton).click(toggleComments);
-									$('.bcGPlusTwCollapseComments.', _comments).remove(); // strip any existing buttons
+									$('.bcGPlusTwCollapseComments', _comments).remove(); // strip any existing buttons
 									$(_comments).append('<div class="bcGPlusTwCollapseComments" title="Collapse comments">&nbsp;</div>');
 									$('.bcGPlusTwCollapseComments', _comments).click(toggleComments);
 									hideComments(_comments);
