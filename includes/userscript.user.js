@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.11
+// @version        1.111
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -37,7 +37,9 @@
 //	todo: add comment insert/open/close handler to implement easy mentions in comments
 //	todo: fix markdown parsing for posts without any text before quoted post
 //	todo: check that posts with attached links following are still parsed for markdown
+//	todo: fix markdown handling of long links in http://goo.gl/o99wB
 //
+// @history        1.111 Fixed removal of links from spark headers when using Markdown parsing    
 // @history        1.11 Fixed copyright footer placement when using fixed navigation    
 // @history        1.11 Fixed number of comments not showing up for closed threads when using toggle comments    
 // @history        1.11 Fixed number of comments messed up on new comments when using toggle comments
@@ -169,7 +171,7 @@
 //
 // ==/UserScript==
 
-var version = 1.11;
+var version = 1.111;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -640,7 +642,7 @@ function GTweaks() {
 		 					
 		 		 			// return Google+ translated links back to plain text
 		 		 			$('a', elem).each(function() {
-		 		 				if(this.className != 'proflink') {
+		 		 				if(this.className != 'proflink' && this.innerHTML.match(/^html/)) {
 			 		 				$(this).after($(this).text());
 			 		 				$(this).remove();
 		 		 				}
@@ -664,7 +666,7 @@ function GTweaks() {
 		 					// reparse unparsed URLs to links
 		 					var startingLinks = /^(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(startingLinks, '<a href="$1">$1</a>');
-		 					var embeddedLinks = /(>|\s|[a-z0-9]|\(|\[|\{)((https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
+		 					var embeddedLinks = /(>|\s|[a-z0-9]|\(|\[|\{)(\b(https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(embeddedLinks, '$1<a href="$2">$2</a>');
 		 					
 		 					elem.innerHTML = text;
