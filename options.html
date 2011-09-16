@@ -9,30 +9,9 @@
 		</style>
 	</head>
 	<body>
-		<div style="width:700px;">
-			<a href="" title="Show your love for Google+ Tweaks">
-				<img src="https://lh3.googleusercontent.com/-I9688G68QNo/ThpTzbY_xjI/AAAAAAAAAHA/yhD7MXWhvKw/green_100.png" style="float:right; margin-top:5px;"/>
-			</a>
 			<h1>Google+ Tweaks</h1>
-			<img src="https://lh3.googleusercontent.com/-zqSFsbiqLhc/Thr3qXb_FOI/AAAAAAAAAH8/Dd_zNlStcSw/google%25252B_tweaks_settings_link.gif" style="float:left; margin:0 1em 1em 0;"
+			<img src="https://lh3.googleusercontent.com/-zqSFsbiqLhc/Thr3qXb_FOI/AAAAAAAAAH8/Dd_zNlStcSw/google%25252B_tweaks_settings_link.gif"/>
 			<p>All options are found within Google+ under the standard settings menu.</p>
-			<p>This Google Chrome extension is a wrapper for the <a href="http://userscripts.org/scripts/show/106166">Google+ Tweaks</a> userscript.
-				It will automatically update to make sure it has the latest versions.
-			</p>
-			<p><input id="reloadButton" type="button" value="Manually Reload Script Now"/></p>
 		</div>
-		<h2 style="clear:both;">Installed Script Source</h2>
-		<pre id="source"></pre>
-		<script>
-			$('#source').html(localStorage.getItem('script').replace(/</, '&lt;').replace(/>/, '&gt;'));
-			$('#reloadButton').click(function() {
-				$(this).attr('disabled', 'disabled');
-				$(this).attr('value', 'loading scripts ...');
-				loadScript(function() {
-					alert('The script has been successfully updated.');
-					document.location = document.location;
-				});
-			})
-		</script>
 	</body>
 </html>

@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1
+// @version        1.11
 //
 // License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
@@ -34,6 +34,21 @@
 // @require        http://userscripts.org/scripts/source/106223.user.js
 // @require        http://userscripts.org/scripts/source/112968.user.js
 //
+//	todo: add comment insert/open/close handler to implement easy mentions in comments
+//	todo: fix markdown parsing for posts without any text before quoted post
+//	todo: check that posts with attached links following are still parsed for markdown
+//
+// @history        1.11 Fixed copyright footer placement when using fixed navigation    
+// @history        1.11 Fixed number of comments not showing up for closed threads when using toggle comments    
+// @history        1.11 Fixed number of comments messed up on new comments when using toggle comments
+// @history        1.1 Plugged massive memory leak due to carryover from old polling methods   
+// @history        1.1 Fixed messed up layout of edit profile with fixed navigation enabled   
+// @history        1.1 Added check to prevent memory leaks on failed Markdown parsing of expanded posts  
+// @history        1.1 Added simple standard Chrome extension option page explaining how to set options  
+// @history        1.1 The contents of shared posts are now parsed for Markdown if enabled  
+// @history        1.1 Full width no longer enabled by default for new installs 
+// @history        1.1 Fixed mute button due to G+ DOM change 
+// @history        1.1 Fixed posts being processed too quickly in Chrome 
 // @history        0.035 Fixed inability to disable thumbnails only 
 // @history        0.0341 Quick fix for links on new lines not getting parsed in markdown 
 // @history        0.034 Scrapped full width code and started over to simplify things and get rid of a lot of bugs 
@@ -53,7 +68,7 @@
 // @history        0.033 Fixed extra space above stream when using fixed navigation in Chrome
 // @history        0.033 Added option to parse Markdown in posts
 // @history        0.032 Fixed easy mentions
-// @history        0.032 Fixed inability to disable inlune plusses and shares
+// @history        0.032 Fixed inability to disable inline plusses and shares
 // @history        0.032 Fixed inability plusses not showing up
 // @history        0.032 Fixed background color occasionally switching back to white when using visibility tweaks
 // @history        0.032 Updated posts muted class to fix hiding/fading of mute notices
@@ -63,7 +78,7 @@
 // @history        0.029 Fixed mute button
 // @history        0.029 Fixed left column of photos not staying in place with fixed navigation
 // @history        0.029 Fixed layout of new incoming shares notice when using full width
-// @history        0.028 Implemented agressive auto selector dection to combat DOM and class changes  
+// @history        0.028 Implemented aggressive auto selector detection to combat DOM and class changes  
 // @history        0.028 Fixed image previews of images across top of profile pages  
 // @history        0.027 Fixed muted posts not hiding correctly  
 // @history        0.026 Fixes for another G+ DOM change  
@@ -154,7 +169,7 @@
 //
 // ==/UserScript==
 
-var version = 1;
+var version = 1.11;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
@@ -368,7 +383,7 @@ function GTweaks() {
 				label:'Full Width',
 				type:'checkbox',
 				description:'View Google+ in the full width of your browser',
-				'default':true
+				'default':false
 			},
 			"readability":{
 				label:'Readability',
@@ -639,12 +654,10 @@ function GTweaks() {
 		 		 							.replace(/<br>/g, "\n")
 		 		 							
 		 		 							//.replace(/"http/g, '"_ttp')
-		 		 							
 		 		 			
-		 					//var text = this.innerHTML;
+		 					//var text = $(elem).text();
 		 					var text = elem.innerHTML;
 		 					text = text.replace(/&gt;/g, '>');//.replace(/>/g, '&gt;');
-//		 					text = text.replace(/</g, '&lt;');//.replace(/>/g, '&gt;');
 		 					
 		 					text = converter.makeHtml(text);
 		 					
@@ -654,28 +667,48 @@ function GTweaks() {
 		 					var embeddedLinks = /(>|\s|[a-z0-9]|\(|\[|\{)((https?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
 		 					text = text.replace(embeddedLinks, '$1<a href="$2">$2</a>');
 		 					
-		 					
-		 					/*
-		 					var quotedLinks = /"(\b(_ttps?|ftp|file):\/\/[\-A-Z0-9+&@#\/%?=~_|!:,.;]*[\-A-Z0-9+&@#\/%=~_|])/ig;
-		 					text = text.replace(quotedLinks, '"<a href="$1">$1</a>')
-		 						.replace(/"_ttp/g, '"http')
-		 						.replace(/>_ttp/g, '>http');
-		 					*/
 		 					elem.innerHTML = text;
 	 					}
 	 				}
 
 	 				$('div:first-child > div:first-child + div > div:first-child > div:first-child > div:first-child', post).each(function() {
-	 					parseMarkdown(this);
+	 					var postBody = this;
+	 					parseMarkdown(postBody);
+	 					// try to parse shared posts
+	 					var sharedPostBody = null;
+	 					try {
+	 						sharedPostBody = $(postBody).parent().next().next()[0].querySelector('div:first-child > div:first-child > div:first-child');
+	 						parseMarkdown(sharedPostBody);
+	 						$('span[role="button"]', $(sharedPostBody).parent()).click(function() {
+		 						var numTries = 0;
+		 						function check() {
+		 							numTries++;
+		 							var quotedBody = $(postBody).parent().next().next()[0].querySelector('div:first-child > div:first-child + div > div:first-child');
+		 							if($(quotedBody).text() != '') {
+		 								parseMarkdown(quotedBody);
+		 							} else {
+		 								if(numTries < 20) {
+		 									setTimeout(check, 100);
+		 								}
+		 							}
+		 						}
+		 						setTimeout(check, 100);
+		 					});
+	 						
+	 					} catch(e) {}
 	 					
 	 					$('span[role="button"]', $(this).parent()).click(function() {
 	 						var parent = $(this).parent();
 	 						var targetOne = $('div:first-child', $(this).parent().parent());
+	 						var numTries = 0;
 	 						function check() {
+	 							numTries++;
 	 							if(targetOne.text() != '') {
 	 								parseMarkdown($('div:first-child', parent.next())[0]);
 	 							} else {
-	 								setTimeout(check, 100);
+	 								if(numTries < 20) {
+	 									setTimeout(check, 100);
+	 								}
 	 							}
 	 						}
 	 						setTimeout(check, 100);
@@ -739,16 +772,11 @@ function GTweaks() {
 							selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
 							// personal profile
 							selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-							//selectors.profileContent  + ' { position:absolute; top:90px; left:260; }' + 
+							selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div[role="tabpanel"] { top:300px; position: absolute; height:inherit; left:260px;  }' +
+							// footer/copyright
+							'#content + div { position:fixed; bottom:0; background:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; }' + 
+							'#content + div * { line-height:16px; height:16px; margin-top:0; margin-bottom:0; }' + 
 							''
-							/*
-							// pictures view
-							selectors.photosLeftCol + ' { position:fixed; top:90px; }' +
-							// profile view
-							selectors.profileLeftCol + ' { position:fixed; top:90px; ' + 
-								(Config.get('fullWidth') ? '' : 'left:' + (rightColOffset - 760) + 'px;') +
-							' }'
-							*/ 
 						);
 						// make the doc scroll to the top on top grey bar button click
 						$(selectors.streamLinksWrapper).click(function() {
@@ -773,7 +801,7 @@ function GTweaks() {
 						// stream
 						s.stream + ' { width:' + (docWidth - 20) + 'px; } ' +
 						s.streamRightCol + ' { position:absolute; right:10px; top:0; }' +
-						s.streamContent + ' { width:' + (docWidth - streamLeftColWidth - streamRightColWidth - 20) + 'px; }' +
+						s.streamContent + ' { width:' + (docWidth - streamLeftColWidth - streamRightColWidth - 22) + 'px; }' +
 						s.streamShareWrapper + ' { width:100% !important; }' +
 						s.streamContent + ' > div:first-child > div { margin-left:0; margin-right:0; }' +
 						// notifications
@@ -875,7 +903,6 @@ function GTweaks() {
 						'#bcGplusTweaksPreview .loading { ' +
 							'background:url(https://lh4.googleusercontent.com/-6CrxAryPl6o/TigTcQV2HmI/AAAAAAAAAQg/tFbeZcP4Mro/loading.gif) no-repeat center; height:50px; width:50px; }'
 					);
-					self.addPolling(self.features.imagePreviews.processPosts);
 				}
 			},
 			loaded:{},
@@ -963,7 +990,7 @@ function GTweaks() {
 					}
 				});
 			},
-			processPosts: function(post) {
+			processPost:function() {
 				self.features.imagePreviews.enableTarget(selectors.userContentImages);
 			}
 		},
@@ -1003,7 +1030,16 @@ function GTweaks() {
 						
 						var _comments = commentsWrapper;
 						var buttonsWrapper = $(postBody).next()[0];
-						var postComment = buttonsWrapper.querySelectorAll('span[role="button"]')[0];
+						var spanButtons = buttonsWrapper.querySelectorAll('span[role="button"]');
+						var postComment = spanButtons[0];
+						if(spanButtons.length < 2) {
+							var postComment = document.createElement('span');
+							$(spanButtons[0]).before(postComment);
+							$(postComment).after('&nbsp;&nbsp;&nbsp;-&nbsp;&nbsp;');
+							$(postComment).attr('role', 'button');
+							postComment.title = 'Togle comments';
+							postComment.innerHTML = '';
+						}
 						
 						function getNumComments() {
 							numWrapper = commentsWrapper.querySelector('div:first-child > span:first-child + div > span:first-child')
@@ -1039,6 +1075,7 @@ function GTweaks() {
 							}
 							numTotal = getNumComments();
 							if($('.bcGTweaksNumComments', post).size() == 0) {
+								$('.bcGTweaksNumComments', post).remove();
 								if(numTotal > 0) {
 									var commentsButton = document.createElement('span');
 									commentsButton.className = 'bcGTweaksNumComments';
@@ -1196,7 +1233,6 @@ function GTweaks() {
 						'.bcTweaksMiniPostCollapsed ' + selectors.postCommentsMoreButtonWrapper + ' { position:absolute; top:0; right:45px; background:#fff; z-index:3000; }' + 
 						'.bcTweaksMiniPostCollapse { position:absolute; top:0; cursor:pointer; right:0; width:15px; background:#eee; border-left:1px solid #d2d2d2; height:100%; }' +
 					'');
-					self.addPolling(self.features.postPreviews.processPosts);
 					// press "T" to mute the current post
 					$('body').keyup(function(e) {
 						if(!eventIsFromTyping(e)) {
@@ -1278,8 +1314,20 @@ function GTweaks() {
 				}
 			},
 			processPost: function(post) {
+				
 				try {
 					var postButton = post.querySelector('div:first-child > div:first-child > span');
+					
+					// detect mute button class
+					if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 4) {
+						self.muteButtonClassFound = true;
+						var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(2).attr('class').replace(/\s+/g, '.');
+						if(Config.get('selectorMuteButton') != muteButtonSelector) {
+							Config.set('selectorMuteButton', muteButtonSelector);
+							document.location = document.location;
+						}
+					}
+					
 					if($('.bcGTweaksMute', post).size() == 0) {
 						var _this = postButton;
 						setTimeout(function() {
@@ -1299,7 +1347,7 @@ function GTweaks() {
 						}, 500);
 					}
 				} catch(e) {
-					alert(e);
+					
 				}
 			}
 		},
@@ -1470,6 +1518,8 @@ function GTweaks() {
  		}
  	};
  	this.processView = function() {
+ 		self.numPostsFound = 0;
+		self.numPostsParsed = 0;
  		// launch feature processPostBody functions
  		for(var k in self.features) {
  			var feature = self.features[k];
@@ -1479,8 +1529,10 @@ function GTweaks() {
  		}
  	};
  	this.startPolling = function() {
-
  		function contentPaneChanged() {
+ 			
+ 			if(typeof(self.numPostsFound) == 'undefined') self.numPostsFound = 0;
+ 			if(typeof(self.numPostsParsed) == 'undefined') self.numPostsParsed = 0;
  			
  			// check for new view
  			if(self.oldLocation != document.location.toString()) {
@@ -1488,39 +1540,25 @@ function GTweaks() {
  				self.processView();
  			}
  			
+ 			
  			// process posts
  			nodes = document.querySelectorAll('#contentPane div[id^="update"]');
- 			for (i = 0; i < nodes.length; i++) {
- 				var n = nodes[i];
- 				if(!n.className.match(/bcPoll/)) {
- 					n.className += ' bcPoll';
- 					
-					var post = n;
- 					//n.innerHTML = $(n).text();
-					
-					
-					// detect mute button class
-		 			if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 3) {
-		 				var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(1).attr('class').replace(/\s+/g, '.');
-		 				self.muteButtonClassFound = true;
-		 				if(Config.get('selectorMuteButton') != muteButtonSelector) {
-		 					Config.set('selectorMuteButton', muteButtonSelector);
-		 					document.location = document.location;
-		 				}
-		 			}
-					
+ 			self.numPostsFound = nodes.length;
+ 			for (self.numPostsParsed = 0; self.numPostsParsed < self.numPostsFound; self.numPostsParsed++) {
+ 				var post = nodes[self.numPostsParsed];
+ 				if(!post.className.match(/bcPoll/)) {
+ 					post.className += ' bcPoll';
 					self.processPost(post);
-		 			
- 					
  				}
  			}
 		}
 		
  		if(document.getElementById('contentPane')) {
- 			document.getElementById('contentPane').addEventListener('DOMNodeInserted', contentPaneChanged, false);
+ 			document.getElementById('contentPane').addEventListener('DOMNodeInserted', function() {
+ 				setTimeout(contentPaneChanged, 100);
+ 			}, false);
  		}
 		//document.getElementById('contentPane').addEventListener('DOMNodeRemoved', contentPaneChanged, false);
- 		
 		
  		// auto detect main classes
  		if(Config.get('selectorAutoUpdate')) updateSelectors();
@@ -1535,7 +1573,7 @@ function GTweaks() {
  			if(typeof(self.pollFuncions[i]) == 'function')
  				self.pollFuncions[i]();
  		}
- 		setTimeout(self.startPolling, self.pollInterval);
+ 		//setTimeout(self.startPolling, self.pollInterval);
  	};
 	return this.construct();
 }
