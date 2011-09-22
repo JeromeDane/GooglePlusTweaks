@@ -10,10 +10,10 @@
 // @include        http://plus.google.com/*
 // @include        https://plus.google.com/*
 //
-// @require        http://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js
-// @require        http://userscripts.org/scripts/source/106368.user.js
-// @require        http://userscripts.org/scripts/source/106223.user.js
-// @require        http://userscripts.org/scripts/source/112968.user.js
+// @require        https://ajax.googleapis.com/ajax/libs/jquery/1.6.2/jquery.min.js
+// @require        https://userscripts.org/scripts/source/106368.user.js
+// @require        https://userscripts.org/scripts/source/106223.user.js
+// @require        https://userscripts.org/scripts/source/112968.user.js
 //
 // @history        1.112 Removed hide welcome link option since it's no longer included in the layout    
 // @history        1.111 Fixed removal of links from spark headers when using Markdown parsing    
