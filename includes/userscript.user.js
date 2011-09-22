@@ -3,29 +3,10 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.111
+// @version        1.113
 //
-// License        Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
-//
-// Copyright (c) 2011 Jerome Dane
-//
-// Permission is hereby granted, free of charge, to any person obtaining 
-// a copy of this software and associated documentation files (the "Software"), 
-// to deal in the Software without restriction, including without limitation the 
-// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or 
-// sell copies of the Software, and to permit persons to whom the Software is 
-// furnished to do so, subject to the following conditions:
+// @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
-// The above copyright notice and this permission notice shall be included in all 
-// copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
-// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
-// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
-// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
-// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
-// OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-//
 // @include        http://plus.google.com/*
 // @include        https://plus.google.com/*
 //
@@ -34,11 +15,7 @@
 // @require        http://userscripts.org/scripts/source/106223.user.js
 // @require        http://userscripts.org/scripts/source/112968.user.js
 //
-//	todo: add comment insert/open/close handler to implement easy mentions in comments
-//	todo: fix markdown parsing for posts without any text before quoted post
-//	todo: check that posts with attached links following are still parsed for markdown
-//	todo: fix markdown handling of long links in http://goo.gl/o99wB
-//
+// @history        1.112 Removed hide welcome link option since it's no longer included in the layout    
 // @history        1.111 Fixed removal of links from spark headers when using Markdown parsing    
 // @history        1.11 Fixed copyright footer placement when using fixed navigation    
 // @history        1.11 Fixed number of comments not showing up for closed threads when using toggle comments    
@@ -171,11 +148,31 @@
 //
 // ==/UserScript==
 
-var version = 1.111;
+// License         Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
+//
+// Copyright (c) 2011 Jerome Dane
+//
+// Permission is hereby granted, free of charge, to any person obtaining 
+// a copy of this software and associated documentation files (the "Software"), 
+// to deal in the Software without restriction, including without limitation the 
+// rights to use, copy, modify, merge, publish, distribute, sublicense, and/or 
+// sell copies of the Software, and to permit persons to whom the Software is 
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all 
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, 
+// INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A 
+// PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+// HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF 
+// CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
+// OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+var version = 1.113;
 
 var debugSelectors = false;
 var debugAlign = 'right';		// 'left' or 'right'
-
 
 var selectors = {
 		content: '#content',
@@ -387,6 +384,12 @@ function GTweaks() {
 				description:'View Google+ in the full width of your browser',
 				'default':false
 			},
+			"fixedNav":{
+				label:'Fixed Navigation',
+				type:'checkbox',
+				description:'Pin navigational elements so they stay visible',
+				'default':'none'
+			},
 			"readability":{
 				label:'Readability',
 				type:'checkbox',
@@ -428,19 +431,6 @@ function GTweaks() {
 				description:'Parse <a href="http://en.wikipedia.org/wiki/Markdown" target="_blank">markdown</a> in posts and comments',
 				'default':true
 			},
-			"imagePreviews":{
-				label:'Image Previews',
-				type:'select',
-				options:{
-					'none':'Disabled',
-					'0':'No delay',
-					'500': '0.5 second delay',
-					'1000': '1 second delay',
-					'2000': '2 second delay'
-				},
-				description:'Show image preview on rollover',
-				'default':'500'
-			},
 			"comments":{
 				label:'Toggle Comments',
 				type:'checkbox',
@@ -459,16 +449,18 @@ function GTweaks() {
 				description:'Force all images in posts to thumbnails',
 				'default':false
 			},
-			"fixedNav":{
-				label:'Fixed Navigation',
+			"imagePreviews":{
+				label:'Image Previews',
 				type:'select',
 				options:{
-					none: 'None',
-					gBar: 'Google Bar',
-					all: 'All Navigation'
+					'none':'Disabled',
+					'0':'No delay',
+					'500': '0.5 second delay',
+					'1000': '1 second delay',
+					'2000': '2 second delay'
 				},
-				description:'Pin elements so they stay visible',
-				'default':'none'
+				description:'Show image preview on rollover',
+				'default':'500'
 			},
 			'seeAbout':{
 				type:'html',
@@ -477,11 +469,6 @@ function GTweaks() {
 			}
 		},
 		"Hide":{
-			"hideWelcomeLink":{
-				label:'Welcome Link',
-				type:'checkbox',
-				description:'Hide the welcome link in the left column'
-			},
 			"hideChatRoster":{
 				label:'Chat List',
 				type:'checkbox',
@@ -608,6 +595,14 @@ function GTweaks() {
 				'default':'.Un'
 			}	
 		},
+		"Issues & Planned Features":{
+			'todo':{
+				type:'html',
+				text:'' +
+				'<p>If you find something that has not been addressed, please submit it to <a href="http://profiles.google.com/JeromeDane">Jerome Dane</a>. To report issues and bugs, please include screenshots of your options window, as well of the resulting behavior in Google+. To request a new feature, please be as specific as possible, and include a Photoshop mockup of what you would like if you can make one.</p>' +
+				'<iframe src="http://blankcanvas.me/googleplustweaksissues.html" style="width:100%; border:none; height:300px;"></iframe>'
+			}
+		},
 		"About":{
 			'about':{
 				type:'html',
@@ -640,26 +635,25 @@ function GTweaks() {
 		 					elem.className = "mdParsed";
 		 		 			var converter = new Showdown.converter();
 		 					
+		 		 			elem.innerHTML = elem.innerHTML
+	 							.replace(/<\/?i><\/?b>/g, "***")
+	 							.replace(/<\/?b><\/?i>/g, "***")
+	 							.replace(/<\/?b>/g, "__")
+	 							.replace(/<\/?i>/g, "*")
+	 							.replace(/<br>/g, "\n");
+	 							//.replace(/"http/g, '"_ttp')
+		 		 			
 		 		 			// return Google+ translated links back to plain text
 		 		 			$('a', elem).each(function() {
-		 		 				if(this.className != 'proflink' && this.innerHTML.match(/^html/)) {
+		 		 				if(this.className != 'proflink' && this.innerHTML.match(/^http/)) {
 			 		 				$(this).after($(this).text());
 			 		 				$(this).remove();
 		 		 				}
 		 		 			});
 		 		 			
-		 		 			elem.innerHTML = elem.innerHTML
-		 		 							.replace(/<\/?i><\/?b>/g, "***")
-		 		 							.replace(/<\/?b><\/?i>/g, "***")
-		 		 							.replace(/<\/?b>/g, "__")
-		 		 							.replace(/<\/?i>/g, "*")
-		 		 							.replace(/<br>/g, "\n")
-		 		 							
-		 		 							//.replace(/"http/g, '"_ttp')
-		 		 			
 		 					//var text = $(elem).text();
-		 					var text = elem.innerHTML;
-		 					text = text.replace(/&gt;/g, '>');//.replace(/>/g, '&gt;');
+		 					var text = elem.innerHTML;	// this produces generally bad results
+		 			//		text.replace(/>/g, '&gt;');
 		 					
 		 					text = converter.makeHtml(text);
 		 					
@@ -751,40 +745,35 @@ function GTweaks() {
 					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; } #content { position:absolute; top:90px; }');
 					//$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
 				}
-				switch(Config.get('fixedNav')) {
-					case 'gBar':
-						fixGbar(0);
-						break;
-					case 'all':
-						fixGbar(navigator.userAgent.match(/chrome/i) ? 0 : 29);
-						self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
-							selectors.googleBar + ' { z-index:1200; }' +
-							// stream view
-							selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
-							selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth + 10) + 'px; }' +
-							selectors.streamRightCol  + ' { position:fixed !important; top:90px !important; ' + 
-								(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
-							' }' +
-							selectors.streamNotificationCol + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
-							// profile (normal)
-							selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-							// profile (with pics)
-							selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-							// profile (verified with pics - scoble)
-							selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-							// personal profile
-							selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-							selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div[role="tabpanel"] { top:300px; position: absolute; height:inherit; left:260px;  }' +
-							// footer/copyright
-							'#content + div { position:fixed; bottom:0; background:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; }' + 
-							'#content + div * { line-height:16px; height:16px; margin-top:0; margin-bottom:0; }' + 
-							''
-						);
-						// make the doc scroll to the top on top grey bar button click
-						$(selectors.streamLinksWrapper).click(function() {
-							$(document).scrollTop(0);
-						});
-						break;
+				if(Config.get('fixedNav')) {
+					fixGbar(navigator.userAgent.match(/chrome/i) ? 0 : 29);
+					self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
+						selectors.googleBar + ' { z-index:1200; }' +
+						// stream view
+						selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
+						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth + 10) + 'px; }' +
+						selectors.streamRightCol  + ' { position:fixed !important; top:90px !important; ' + 
+							(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
+						' }' +
+						selectors.streamNotificationCol + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
+						// profile (normal)
+						selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						// profile (with pics)
+						selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						// profile (verified with pics - scoble)
+						selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						// personal profile
+						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div[role="tabpanel"] { top:300px; position: absolute; height:inherit; left:260px;  }' +
+						// footer/copyright
+						'#content + div { position:fixed; bottom:0; background:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; }' + 
+						'#content + div * { line-height:16px; height:16px; margin-top:0; margin-bottom:0; }' + 
+						''
+					);
+					// make the doc scroll to the top on top grey bar button click
+					$(selectors.streamLinksWrapper).click(function() {
+						$(document).scrollTop(0);
+					});
 				}
 			}
 		},
@@ -1431,7 +1420,6 @@ function GTweaks() {
 			
 			if(Config.get('hideCopyright')) css += '#content + div { display:none !important; }';
 			if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
-			if(Config.get('hideWelcomeLink')) css += selectors.streamWelcomeLink + ', ' + selectors.streamWelcomeLink + ' + div { display:none; }';
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
