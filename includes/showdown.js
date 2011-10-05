@@ -691,10 +691,10 @@ var _DoHeaders = function(text) {
 			return hashBlock("<h" + h_level + ' id="' + headerId(m2) + '">' + _RunSpanGamut(m2) + "</h" + h_level + ">");
 		});
 	
+	 */
 	function headerId(m) {
 		return m.replace(/[^\w]/g, '').toLowerCase();
 	}
-	*/
 	return text;
 }
 
