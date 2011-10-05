@@ -1,65 +1,23 @@
 <html>
 	<head>
 		<script src="includes/jquery.js"></script>
-		<script src="includes/common.js"></script>
 		<script>
-			if(!localStorage.getItem('script'))
-				loadScript();
-			// look for update
-			$.ajax({
-				url:'http://userscripts.org/scripts/source/106166.meta.js',
-				success:function(data) {
-					var version = data.toString().match(/@version\s+([^\s]+)/)[1].toString();
-					if(localStorage.getItem('installedVersion') != version)
-						loadScript();
-				}
-			});
-			function getScriptSource(src, callback) {
-				$.ajax({
-					url:src,
-					success:callback
-				});
-			}
-			
 			chrome.extension.onRequest.addListener(function(request, sender, sendResponse){
 				switch(request.name) {
-					case 'getScript':
-						var script = '';
-						getScriptSource(chrome.extension.getURL("includes/jqueryui.js"), function(source) {
-							script += source;
-							getScriptSource(chrome.extension.getURL("includes/userscript.js"), function(source) {
-								script += source;
-								sendResponse(script);  
-							})
-						});
-						break;	
-					case 'growl':
-						var notification = webkitNotifications.createNotification(
-						  chrome.extension.getURL("icon.png"),
-						  request.title,
-						  request.message
-						);
-						notification.show();  
-						break;	
-					case 'ajax':
-						var type = (!request.options.method) ? 'GET' : request.options.method;
-						var ajaxOptions = {
-							type:type,
-							url:request.options.url,
-							success:function(response) {
-								var obj = {
-									responseText:response,
-									readyState:'complete'
-								}
-								sendResponse(obj);
+					case 'reloadBackground': 
+						chrome.extension.getBackgroundPage().location.reload();
+						break;
+					case 'getContentScript':
+						$.ajax({
+							url:chrome.extension.getURL('includes/userscript.user.js'),
+							success:function(data) {
+								sendResponse(data);
 							}
-						};
-						if(type == 'POST' && request.options.data)
-							ajaxOptions.data = request.options.data;
-						$.ajax(ajaxOptions);
+						});
 						break;
 				}
 			});
+			
 		</script>
 	</head>
 </html>

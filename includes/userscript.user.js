@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.113
+// @version        1.115
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,6 +15,22 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
+// @history        1.115 Added feedback button to options window to track suggestions/bugs     
+// @history        1.115 Options dialog now opens on first install
+// @history        1.115 Notice of update complete with link to changelog (can be disabled in about tab)
+// @history        1.115 Parse Markdown no longer treads #tags as headers
+// @history        1.115 Fixed detection of DOM elements not happening on view change
+// @history        1.115 Fixed large whitespace under images forced to thumbnails in posts      
+// @history        1.115 Video previews in posts are no longer shrunk by image thumbnails feature       
+// @history        1.115 Fixed navigation is no longer enabled by default
+// @history        1.115 Changed selectors tab in options to Debug tab
+// @history        1.115 Made internal debug selectors function an option on debug tab    
+// @history        1.115 Removed issues and bugs tab from options    
+// @history        1.115 Reorganized general options tab into layout and enhancement tabs    
+// @history        1.115 Latest version of script is now injected on reload (useful for Chrome extension development)     
+// @history        1.114 Fixed search stream messed up when using fixed navigation    
+// @history        1.114 Fixes to mute button    
+// @history        1.113 Fixed issues with Markdown parsing    
 // @history        1.112 Removed hide welcome link option since it's no longer included in the layout    
 // @history        1.111 Fixed removal of links from spark headers when using Markdown parsing    
 // @history        1.11 Fixed copyright footer placement when using fixed navigation    
@@ -169,10 +185,11 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.113;
-
-var debugSelectors = false;
-var debugAlign = 'right';		// 'left' or 'right'
+var version = 1.115;
+var status = 'installed';
+if(GM_getValue('installedVersion', false) != version.toString()) {
+	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
+}
 
 var selectors = {
 		content: '#content',
@@ -182,28 +199,6 @@ var selectors = {
 	};
 var s = selectors;
 var dynamicSelectors = {};
-
-function detectWidthRestrictor() {
-	var widthInhibiterWidthPattern = /574/;
-	// selectorWidthRestrictor
-	var inhibiterSelctor = '';
-	$(s.contentPane + ' *[width=574]').each(function() {
-		
-		// determine classes of width inhibitor
-		var classes = this.className.split(" ");
-		// test for specific width inhibitor class
-		for(var i = 0; i < classes.length; i++) {
-			var selector = '.' + classes[i];
-			if($(selector).css('width').match(widthInhibiterWidthPattern))
-				inhibiterSelctor += selector + ', ';
-		}
-		
-	});
-	if(inhibiterSelctor != '') {
-		Config.set('selectorWidthRestrictor', inhibiterSelctor.replace(/,\s*$/, ''));
-		document.location = document.location;
-	}
-}
 
 function detectIncomingWrapper() {
 	var incomingNotice = $('a[href*="/stream/incoming"]', s.streamContent);
@@ -219,7 +214,6 @@ function compareAndSaveSelector(key, val) {
 		Config.set(key, val);						// save the new selector
 		// update width inhibiter 
 		if(key == 'selectorStreamContent') {
-			detectWidthRestrictor();
 			detectIncomingWrapper();
 		}
 		document.location = document.location;		// refresh the page
@@ -234,7 +228,7 @@ function updateSelectors() {
 		if(document.location.toString().match(/plus\.google\.com\/(stream)?$/)) {
 			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
 			compareAndSaveSelector('selectorStreamContent', str);
-			if(!Config.get('selectorWidthRestrictor').match(/^\./)) detectWidthRestrictor();
+			
 			if(!Config.get('selectorStreamIncomingNotice').match(/^\./)) detectIncomingWrapper();
 		}
 		// notifications
@@ -252,93 +246,13 @@ function updateSelectors() {
 			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
 			compareAndSaveSelector('selectorProfile', str);
 		}
+		// search
+		if(document.location.toString().match(/plus\.google\.com\/s\//)) {
+			var str = '.' + $(s.contentPane).attr('class').replace(/\s+/g, '.');
+			compareAndSaveSelector('selectorSearch', str);
+		}
 	}
 }
-
-function populateSelectors() {
-	// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
-	s.widthRestrictor = Config.get('selectorWidthRestrictor');				
-	s.chatRoster = '#oz-chat-roster';
-	
-	s.postCommentEditorMention = 'f-IE';
-	
-	s.stream = s.content + ' ' + Config.get('selectorMainWrapper');
-		s.streamLeftCol = s.stream + ' > div:first-child';
-		s.streamContent = s.stream + ' ' + Config.get('selectorStreamContent');				// #contentPane *class only* when in stream view (don't include ID)
-			s.streamShareWrapper = s.streamContent + ' > div:first-child > div:first-child + div';
-			s.streamIncomingNotice = s.streamContent + ' ' + (Config.get('selectorStreamIncomingNotice') != '' ? Config.get('selectorStreamIncomingNotice') : '.nope');
-		s.streamRightCol = s.streamContent + ' + div'
-			s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
-				s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + div > a:first-child';
-		s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
-			s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
-		s.streamNotificationCol = s.stream + ' ' + (Config.get('selectorStreamNotificationCol') != '' ? Config.get('selectorStreamNotificationCol') : '.nope');		// When in notifications: #contentPane *class only* > div:first-child
-		s.incomingPostedBy = ' .Ov.GB';
-			s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
-			s.incomingPostedByMutePostButton = s.incomingPostedBy + ' > div:first-child > div:first-child + [role="button"]';
-		s.sparksSearchButton = s.streamNotificationCol + ' .d-q-p.j-e.j-e-Y.l2.e1';
-		s.sparksAddInterestButton = s.streamNotificationCol + ' .b-o-l.g-d.g-d-R.Oba.B9';
-	s.profile = s.content + ' ' + (Config.get('selectorProfile') != '' ? Config.get('selectorProfile') : '.nope');
-		s.profileContent = s.profile + ' .vcard > div:first-child'; 
-		s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
-	s.post = 'div[id^="update"]';
-		s.postSelected = s.post + '.rh';		// you just have to figure out what class they're using
-		dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
-			dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
-			dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
-			dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
-			dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
-				dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
-			dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
-				dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
-		dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
-			dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
-	
-			dynamicSelectors.postButton = s.post + ' > div:first-child > div:first-child > span';
-			s.postMuteButton = Config.get('selectorMuteButton') != '' ? Config.get('selectorMuteButton') : '.nope';
-			
-			s.postMutedNotice = '.En';//s.post + (Config.get('selectorPostMutedNotice') != '' ? Config.get('selectorPostMutedNotice') : '.nope');
-	
-	s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
-	
-	s.postImages = 'img[src*="googleusercontent"]';
-	s.photosWrapper = (Config.get('selectorPhotos') != '' ? Config.get('selectorPhotos') : '.nope');
-	s.photosLeftCol = s.photosWrapper + ' > div:first-child > div:first-child';
-	s.photosContent = s.photosWrapper + ' > div:first-child > div:first-child';
-	s.photosRightCol = s.photosWrapper + ' > div:first-child > div:nth-child(3)';
-	s.sendFeedback = 'a[onclick*="appfeedback"]';
-	s.profileLink = 'a[oid]';
-	s.userContentImages = 'img[src*="googleusercontent.com"]';
-	
-	if(debugSelectors && $(s.content).size() > 0) {
-		var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
-		var colors = {};
-		setTimeout(function() {
-			var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + debugAlign + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
-			html += '</div>';
-			function debugSelectors() {
-				var html = '<p>Selectors Found:</p>';s
-				for(var x in selectors) {
-					var elem = $(selectors[x])
-					var numFound = elem.size();
-					// generate a random color to identify the element
-					if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
-					var color = colors[x];
-					elem.css('background', color);
-					elem.attr('title', x);
-					html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
-					
-					
-				}
-				$('#bcGPTksSelectorDebug').html(html);
-			}
-			debugSelectors();
-			setInterval(debugSelectors, 3000);
-			$('body').append(html);
-		}, 2000);
-	}
-}
-	
 
 var playVideoIconSelector = '.ea-S-ei';
 
@@ -365,18 +279,35 @@ function GTweaks() {
 	var self = this;
 	this.css = '';
 	this.donateButtonsHtml = '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Donate through PayPal to support Google+ Tweaks"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" /></a> &nbsp; ' +
-		'<a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr Google+ Tweaks" title="Flattr this" border="0" /></a>';
+		'<a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr Google+ Tweaks" title="Flattr this" border="0" /></a>' +
+		'<a href="https://googleplustweaks.uservoice.com" ' +
+			'style="background-image: url(http://widget.uservoice.com/images/clients/widget2/tab-horizontal-dark.png); border:1px solid #fff; border-radius:2px; ' +
+					'-webkit-box-shadow: rgba(255, 255, 255, 0.246094) 1px 1px 1px inset, rgba(0, 0, 0, 0.496094) 0px 1px 2px; box-shadow: rgba(255, 255, 255, 0.246094) 1px 1px 1px inset, rgba(0, 0, 0, 0.496094) 0px 1px 2px; font: normal normal bold 14px/1em Arial, sans-serif; right: 10px; bottom: 0px; z-index: 9999; background-color: rgb(204, 109, 0); display: inline-block; margin-bottom: 0px; background-position: 0px 50%; background-repeat: no-repeat no-repeat; ' +
+					'padding:4px 7px 4px 36px; position:relative; top:-6px; left:10px; color:#fff; font-size:12px;" title="Give feedback and view existing issues">Feedback</a>';
 	this.pollInterval = 3000;		// in milliseconds
 	this.pollFuncions = [];
 	this.version = version;
 	this.muteButtonClassFound = false;
 	this.options = {
-		"General":{
-			"faviconBadge":{
-				label:'Favicon Badge',
+		"Layout":{
+			"htmlUpdateNotice":{
+				type:'html',
+				text:(status != 'installed' ? 
+						(status == 'new' ? 
+							'<p>Thanks for installing Google+ Tweaks. To get to these options in the future, just click on the link under your Google settings button (the gear in the top right).</p>' :
+							'<p>Google+ Tweaks has been updated to v' + version +'. <a href="https://github.com/JeromeDane/GooglePlusTweaks/blob/master/includes/userscript.user.js" target="_blank">See what\'s changed</a></p>'
+						) + '<br/>' : ''
+					)
+			},
+			'htmlLayout':{
+				type:'html',
+				text:'These settings tweak the <strong>look and feel</strong> of Google+<br/><br/>'
+			},
+			"readability":{
+				label:'Readability',
 				type:'checkbox',
-				description:'See the number of new alerts in your favicon',
-				'default':true
+				description:'Improve readibility based on <a href="https://chrome.google.com/webstore/detail/nhogbifmjccfhopdggilcbeamcmlhmgo">Google+ Ultimate</a>',
+				'default':false
 			},
 			"fullWidth":{
 				label:'Full Width',
@@ -388,53 +319,6 @@ function GTweaks() {
 				label:'Fixed Navigation',
 				type:'checkbox',
 				description:'Pin navigational elements so they stay visible',
-				'default':'none'
-			},
-			"readability":{
-				label:'Readability',
-				type:'checkbox',
-				description:'Improve readibility by shifting the focus to posts',
-				'default':false
-			},
-			"postPreviews":{
-				label:'Post Previews',
-				type:'checkbox',
-				description:'Show posts as previews. Click or press "T" to expand',
-				'default':false
-			},
-			"muteButton":{
-				label:'Mute Button',
-				type:'checkbox',
-				description:'Add button to posts for one click muting',
-				'default':true
-			},
-			"muteNotices":{
-				label:'Mute Notices',
-				type:'select',
-				options:{
-					none:'Do nothing',
-					fade:'Fade out',
-					hide:'Hide'
-				},
-				description:'Treatment of "post muted" notices',
-				'default':'none'
-			},
-			"easyMentions":{
-				label:'Easy Mentions',
-				type:'checkbox',
-				description:'Add links next to names in posts to easily mention them',
-				'default':true
-			},
-			"markdown":{
-				label:'Parse Markdown',
-				type:'checkbox',
-				description:'Parse <a href="http://en.wikipedia.org/wiki/Markdown" target="_blank">markdown</a> in posts and comments',
-				'default':true
-			},
-			"comments":{
-				label:'Toggle Comments',
-				type:'checkbox',
-				description:'Collapse post comments with click to expand',
 				'default':false
 			},
 			"inlinePlusShare":{
@@ -449,26 +333,18 @@ function GTweaks() {
 				description:'Force all images in posts to thumbnails',
 				'default':false
 			},
-			"imagePreviews":{
-				label:'Image Previews',
-				type:'select',
-				options:{
-					'none':'Disabled',
-					'0':'No delay',
-					'500': '0.5 second delay',
-					'1000': '1 second delay',
-					'2000': '2 second delay'
-				},
-				description:'Show image preview on rollover',
-				'default':'500'
+			"postPreviews":{
+				label:'Post Previews',
+				type:'checkbox',
+				description:'Show posts as previews. (work in progress)',
+				'default':false
 			},
-			'seeAbout':{
-				type:'html',
-				text:'<div><br/></div>' +
-					'<p>More features coming soon. See <strong>About</strong> tab for more details information.</p>'
-			}
 		},
-		"Hide":{
+		"Hide Things":{
+			'htmlLayout':{
+				type:'html',
+				text:'These settings let you <strong>hide elements</strong> you don\'t use<br/><br/>'
+			},
 			"hideChatRoster":{
 				label:'Chat List',
 				type:'checkbox',
@@ -482,7 +358,7 @@ function GTweaks() {
 			"hideSendFeedback":{
 				label:'Send Feedback',
 				type:'checkbox',
-				description:'Hide the send feedback link in the borrom right'
+				description:'Hide the send feedback link in the bottom right'
 			},
 			"hidePlusMention":{
 				label:'Mention Prefix',
@@ -518,23 +394,92 @@ function GTweaks() {
 				description:'Hide Google+ copyright footer'
 			}
 		},
-		"Selectors":{
-			"selectorsIntroHtml":{
+		"Enhancements":{
+			"htmlEnhancements":{
 				type:'html',
-				text:'<p>This tab is for advanced users only. The Google+ DOM and element classes are constantly changing. These settings are an attempt to combat these changes and create some stability for end-users.</p>' +
-					''
+				text:'These settings add <strong>new features</strong> to Google+<br/><br/>'
+			},
+			"faviconBadge":{
+				label:'Favicon Badge',
+				type:'checkbox',
+				description:'See the number of new alerts in your favicon',
+				'default':true
+			},
+			"comments":{
+				label:'Toggle Comments',
+				type:'checkbox',
+				description:'Collapse post comments with click to expand',
+				'default':false
+			},
+			"imagePreviews":{
+				label:'Image Previews',
+				type:'select',
+				options:{
+					'none':'Disabled',
+					'0':'No delay',
+					'500': '0.5 second delay',
+					'1000': '1 second delay',
+					'2000': '2 second delay'
+				},
+				description:'Show image preview on rollover',
+				'default':'500'
+			},
+			"muteButton":{
+				label:'Mute Button',
+				type:'checkbox',
+				description:'Add button to posts for one click muting',
+				'default':true
+			},
+			"muteNotices":{
+				label:'Mute Notices',
+				type:'select',
+				options:{
+					none:'Do nothing',
+					fade:'Fade out',
+					hide:'Hide'
+				},
+				description:'Treatment of "post muted" notices',
+				'default':'none'
+			},
+			"easyMentions":{
+				label:'Easy Mentions',
+				type:'checkbox',
+				description:'Add links next to names in posts to easily mention them',
+				'default':true
+			},
+			"markdown":{
+				label:'Parse Markdown',
+				type:'checkbox',
+				description:'Parse <a href="http://en.wikipedia.org/wiki/Markdown" target="_blank">markdown</a> in posts and comments',
+				'default':true
+			}
+		},
+		"Debug":{
+			"debugIntroHtml":{
+				type:'html',
+				text:'<p>This tab is for advanced users only. They are designed to help troubleshoot issues within Google+ Tweaks</p>'
+			},
+			"debugSelectors":{
+				label:'Selector Debugging',
+				type:'checkbox',
+				description:'Show DOM element selection',
+				'default':false
+			},
+			"debugSelectorsPos":{
+				label:'Selector Output',
+				type:'select',
+				description:'Selector debug box position',
+				options:{
+					'right':'Right',
+					'left':'Left'
+				},
+				'default':'right'
 			},
 			"selectorAutoUpdate":{
-				label:'Auto Update',
+				label:'Detect Selectors',
 				type:'checkbox',
 				description:'Automatically detect and update selectors below',
 				'default':true
-			},			
-			"selectorWidthRestrictor":{
-				label:'Width Restrictors',
-				type:'text',
-				description:'Classes that restrict width',
-				'default':''
 			},			
 			"selectorMainWrapper":{
 				label:'Main Wrapper',
@@ -572,35 +517,15 @@ function GTweaks() {
 				description:'Profile wrapper',
 				'default':''
 			},			
-			"selectorMuteButton":{
-				label:'Mute Button',
+			"selectorSearch":{
+				label:'Search',
 				type:'text',
-				description:'Post menu mute item',
-				'default':'.a-Q-j.b-O.a-Q-j-xd.Fj.cg'
+				description:'Search wrapper',
+				'default':''
 			},			
 			"selectorManualNoticeHtml":{
 				type:'html',
 				'text':'<p>The following must be updated manually for now.</p>'
-			},
-			"selectorCurrentPost":{
-				label:'Current Post',
-				type:'text',
-				description:'Highlighted/active post',
-				'default':'.ki'
-			},			
-			"selectorPostMutedNotice":{
-				label:'Muted Notice',
-				type:'text',
-				description:'Post muted notice',
-				'default':'.Un'
-			}	
-		},
-		"Issues & Planned Features":{
-			'todo':{
-				type:'html',
-				text:'' +
-				'<p>If you find something that has not been addressed, please submit it to <a href="http://profiles.google.com/JeromeDane">Jerome Dane</a>. To report issues and bugs, please include screenshots of your options window, as well of the resulting behavior in Google+. To request a new feature, please be as specific as possible, and include a Photoshop mockup of what you would like if you can make one.</p>' +
-				'<iframe src="http://blankcanvas.me/googleplustweaksissues.html" style="width:100%; border:none; height:300px;"></iframe>'
 			}
 		},
 		"About":{
@@ -609,15 +534,23 @@ function GTweaks() {
 				text:'' +
 					'<p style="margin-top:0;"><strong><a href="http://userscripts.org/scripts/show/106166">' +
 					'Google+ Tweaks</a></strong> v' + self.version + ' by <a href="http://jeromedane.com">Jerome Dane</a></p>' +
-					'<p>Tweaks to the layout and features of Google+</p>' +
-					'<p>This project is maintained as a hobby. All real-life obligations take precedence. Take it or leave it.</p>' +
-					'<p>I don\'t get paid for this, and do all of this in what little free time I have. If you like these tweaks, show your support by buying me a cup of coffee ☺.</p>' +
+					'<p>This project is open source. Participate on <a href="https://github.com/JeromeDane/GooglePlusTweaks">github</a>.</p>' +
+					'<p>Google+ Tweaks is maintained as a hobby. All real-life obligations take precedence. ' +
+						'I don\'t get paid for this, and do all of this in what little free time I have. If you like these tweaks, show your support ' + 
+						'by <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ">buying me a cup of coffee</a>.</p>' +
 					'<p>' +
 						'<a href="https://plus.google.com/107905455800180378660/posts">' +
 							'<img style="display:inline-block; vertical-align:middle;" src="https://lh3.googleusercontent.com/-IvtEWk93sCM/ThitYp1QudI/AAAAAAAAAGY/piLimw2CogM/google_plus_badge_32.png"/>' +
 						'</a>' +
 						' For updates, <a href="https://plus.google.com/107905455800180378660/posts">follow me on Google+</a>' +
 					'</p>'
+			},
+			'updateNotification':{
+				label:' ',
+				type:'checkbox',
+				description:'Tell me when updates have been installed',
+				'default':true
+				
 			}
 		}
 	};
@@ -750,21 +683,23 @@ function GTweaks() {
 					self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
 						selectors.googleBar + ' { z-index:1200; }' +
 						// stream view
-						selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth + 20) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
-						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth + 10) + 'px; }' +
+						selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
+						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth) + 'px; }' +
 						selectors.streamRightCol  + ' { position:fixed !important; top:90px !important; ' + 
 							(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
 						' }' +
 						selectors.streamNotificationCol + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
 						// profile (normal)
-						selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
 						// profile (with pics)
-						selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
 						// profile (verified with pics - scoble)
-						selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
 						// personal profile
-						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; left:0;  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
+						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
 						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div[role="tabpanel"] { top:300px; position: absolute; height:inherit; left:260px;  }' +
+						// search
+						s.search + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
 						// footer/copyright
 						'#content + div { position:fixed; bottom:0; background:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; }' + 
 						'#content + div * { line-height:16px; height:16px; margin-top:0; margin-bottom:0; }' + 
@@ -799,9 +734,10 @@ function GTweaks() {
 						s.streamNotificationCol + ' { width:' + (docWidth - streamLeftColWidth - 25) + 'px !important; }' +
 						// profile
 						s.profileContent + ' { width:' +  (docWidth - 260) + 'px !important; }' +
+						// search
+						s.search + ' { width:' + (docWidth - 20) + 'px !important; } ' +
 					'');
-					
-				}
+ 				}
 			},
 			adjustNotificationView:function() {
 				var s = selectors;
@@ -817,19 +753,22 @@ function GTweaks() {
 				
 			},
 			onViewChange:function() {
-				self.features.fullWidth.adjustNotificationView();
-
-				//stream view (reposition and expand width of share box)
-				if(document.location.toString().match(/\/$/) || document.location.toString().match(/\/stream\//)) {
-					var base = '#contentPane > div > div > div';
-					$(base).css('margin-left', '0');
-					$(base).css('width', '100%');
+				if(Config.get('fullWidth')) {
+					self.features.fullWidth.adjustNotificationView();
+					
+					//stream view (reposition and expand width of share box)
+					if(document.location.toString().match(/\/$/) || document.location.toString().match(/\/stream\//)) {
+						var base = '#contentPane > div > div > div';
+						$(base).css('margin-left', '0');
+						$(base).css('width', '100%');
+					}
 				}
-
 			},
 			processPost:function() {
 				// doesn't actually process a post. Uses new posts as a trigger to resize required elements
-				self.features.fullWidth.adjustNotificationView();
+				if(Config.get('fullWidth')) {
+					self.features.fullWidth.adjustNotificationView();
+				}
 			}
 		},
 		inlinePlusShare: {
@@ -1293,52 +1232,40 @@ function GTweaks() {
 						if(!eventIsFromTyping(e)) {
 							switch(e.which.toString()) {
 								case '77':	// "M"
-									var postToMute = $(selectors.postSelected);
-									var mb = $(selectors.postMuteButton, postToMute);
-									if(mb.size() > 0) {
-										simulateClick(mb[0]);
-									}
+									var postToMute = $(selectors.postSelected)[0];
+									self.features.muteButton.mutePost(postToMute);
 									break;
 							}
 						}
 					});
 				}
 			},
+			mutePost:function(post) {
+				var postButton = post.querySelector('div:first-child > div:first-child > span');
+				simulateClick(postButton);
+				if($('div[role="menuitem"]', post).size() == 4) {
+					simulateClick($('div[role="menuitem"]', post)[2]);
+				} else if($('div[role="menuitem"]', post).size() == 3) {
+					simulateClick($('div[role="menuitem"]', post)[1]);
+				} else {
+					simulateClick(post);
+				}
+			},
 			processPost: function(post) {
-				
-				try {
-					var postButton = post.querySelector('div:first-child > div:first-child > span');
-					
-					// detect mute button class
-					if(!self.muteButtonClassFound && $('div[role="menuitem"]', post).size() == 4) {
-						self.muteButtonClassFound = true;
-						var muteButtonSelector = '.' + $('div[role="menuitem"]', post).eq(2).attr('class').replace(/\s+/g, '.');
-						if(Config.get('selectorMuteButton') != muteButtonSelector) {
-							Config.set('selectorMuteButton', muteButtonSelector);
-							document.location = document.location;
-						}
-					}
-					
-					if($('.bcGTweaksMute', post).size() == 0) {
-						var _this = postButton;
-						setTimeout(function() {
-							var m = document.createElement('div');
-							m.className = 'bcGTweaksMute';
-							m.innerHTML = '&nbsp;';
-							m.style.cursor = 'pointer';
-							var mb = $(selectors.postMuteButton, post)[0];
-							if(mb) {
-								$(_this).before(m);
-								m.title = $(mb).text();
-								$(m).click(function() {
-									var mb = $(selectors.postMuteButton, post)[0];
-									if(mb) simulateClick(mb);
-								});
-							}
-						}, 500);
-					}
-				} catch(e) {
-					
+				var postButton = post.querySelector('div:first-child > div:first-child > span');
+				if($('.bcGTweaksMute', post).size() == 0) {
+					var _this = postButton;
+					setTimeout(function() {
+						var m = document.createElement('div');
+						m.className = 'bcGTweaksMute';
+						m.innerHTML = '&nbsp;';
+						m.title = 'Mute this post';
+						m.style.cursor = 'pointer';
+						$(_this).before(m);
+						$(m).click(function() {
+							self.features.muteButton.mutePost(post);
+						});
+					}, 500);
 				}
 			}
 		},
@@ -1387,8 +1314,12 @@ function GTweaks() {
 					var maxHeight = 50;
 					var maxWidth = 62;
 					$('img[src*="googleusercontent"]', post).each(function() {
-						this.style.maxHeight = maxHeight + 'px';
-						this.style.maxWidth = maxWidth + 'px';
+						// ignore images in video preview wrappers
+						if($('*', $(this).parent()).size() == 1) {
+							this.style.maxHeight = maxHeight + 'px';
+							this.style.maxWidth = maxWidth + 'px';
+							$(this).parent().css('height', 'inherit');
+						}
 					});
 				}
 			}
@@ -1398,7 +1329,7 @@ function GTweaks() {
 		Config.scriptName = 'Google+ Tweaks';
 		Config.footer = '<span style="position:relative; top:5px">' + self.donateButtonsHtml + '</span>';
 		Config.options = this.options;
-		populateSelectors();
+		self.populateSelectors();
 		self.initFeatures();
 		self.applyStyle();
 		self.startPolling();
@@ -1411,12 +1342,7 @@ function GTweaks() {
 
 			var css = '';
 			
-			
-			
 //			if(Config.get('postButtons')) stylePostButtons();
-			
-			
-			
 			
 			if(Config.get('hideCopyright')) css += '#content + div { display:none !important; }';
 			if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
@@ -1429,7 +1355,6 @@ function GTweaks() {
 			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
 			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
 			
-			
 			// implement CSS
 			if(css != '') {
 				if(typeof(GM_addStyle) == 'function') {
@@ -1440,6 +1365,41 @@ function GTweaks() {
 					document.body.appendChild(sheet);
 				}
 			}
+		}
+		
+		
+		
+		if(Config.get('debugSelectors') && $(s.content).size() > 0) {
+			var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
+			var colors = {};
+			setTimeout(function() {
+				var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + Config.get('debugSelectorsPos') + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
+				html += '</div>';
+				function debugSelectors() {
+					var html = '<p>Selectors Found:</p>';s
+					for(var x in selectors) {
+						var elem = $(selectors[x])
+						var numFound = elem.size();
+						// generate a random color to identify the element
+						if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
+						var color = colors[x];
+						elem.css('background', color);
+						elem.attr('title', x);
+						html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
+						
+					}
+					$('#bcGPTksSelectorDebug').html(html);
+				}
+				debugSelectors();
+				setInterval(debugSelectors, 3000);
+				$('body').append(html);
+			}, 2000);
+		}
+		
+		// open options dialog if new install
+		if(status != 'installed') {
+			GM_setValue('installedVersion', version.toString());
+			setTimeout(self.openConfig, 2000);
 		}
 		
 		return true;
@@ -1471,13 +1431,13 @@ function GTweaks() {
  		$('a[href*="preferences"].gbgt + div ol.gbmcc li:eq(1)').after(
  				'<li class="gbkc gbmtc"><a class="gbmt" href="javascript:void(0)" id="bcGTweaksOptLnk">Google+ tweaks</a></li>'
  		);
- 		$('#bcGTweaksOptLnk').click(function() {
-			
- 			Config.open();
- 			$('.ui-dialog').css('top', '100px');
- 			$(document).scrollTop(0);
- 		});
+ 		$('#bcGTweaksOptLnk').click(self.openConfig);
  	}; 
+ 	this.openConfig = function() {
+ 		Config.open();
+		$('.ui-dialog').css('top', '100px');
+		$(document).scrollTop(0);
+ 	};
  	this.detectElementClass = function(selectorKey, path) {
  		var s = selectors;
  		// detect missing selector classes
@@ -1488,6 +1448,60 @@ function GTweaks() {
  			}
  		}
  	};
+ 	this.populateSelectors = function() {
+ 		// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
+ 		s.chatRoster = '#oz-chat-roster';
+ 		
+ 		s.postCommentEditorMention = 'f-IE';
+ 		
+ 		s.stream = s.content + ' ' + Config.get('selectorMainWrapper');
+ 			s.streamLeftCol = s.stream + ' > div:first-child';
+ 			s.streamContent = s.stream + ' ' + Config.get('selectorStreamContent');				// #contentPane *class only* when in stream view (don't include ID)
+ 				s.streamShareWrapper = s.streamContent + ' > div:first-child > div:first-child + div';
+ 				s.streamIncomingNotice = s.streamContent + ' ' + (Config.get('selectorStreamIncomingNotice') != '' ? Config.get('selectorStreamIncomingNotice') : '.nope');
+ 			s.streamRightCol = s.streamContent + ' + div'
+ 				s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
+ 					s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + div > a:first-child';
+ 			s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
+ 				s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
+ 			s.streamNotificationCol = s.stream + ' ' + (Config.get('selectorStreamNotificationCol') != '' ? Config.get('selectorStreamNotificationCol') : '.nope');		// When in notifications: #contentPane *class only* > div:first-child
+ 			s.incomingPostedBy = ' .Ov.GB';
+ 				s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
+ 				s.incomingPostedByMutePostButton = s.incomingPostedBy + ' > div:first-child > div:first-child + [role="button"]';
+ 			s.sparksSearchButton = s.streamNotificationCol + ' .d-q-p.j-e.j-e-Y.l2.e1';
+ 			s.sparksAddInterestButton = s.streamNotificationCol + ' .b-o-l.g-d.g-d-R.Oba.B9';
+ 		s.profile = s.content + ' ' + (Config.get('selectorProfile') != '' ? Config.get('selectorProfile') : '.nope');
+ 		s.search = s.content + ' ' + (Config.get('selectorSearch') != '' ? Config.get('selectorSearch') : '.nope');
+ 			s.profileContent = s.profile + ' .vcard > div:first-child'; 
+ 			s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
+ 		s.post = 'div[id^="update"]';
+ 			s.postSelected = s.post + '.rh';		// you just have to figure out what class they're using
+ 			dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
+ 				dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
+ 				dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
+ 				dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
+ 				dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
+ 					dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
+ 				dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
+ 					dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
+ 			dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
+ 				dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
+ 		
+ 				dynamicSelectors.postButton = s.post + ' > div:first-child > div:first-child > span';
+ 				
+ 				s.postMutedNotice = '.En';
+ 		
+ 		s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
+ 		
+ 		s.postImages = 'img[src*="googleusercontent"]';
+ 		s.photosWrapper = (Config.get('selectorPhotos') != '' ? Config.get('selectorPhotos') : '.nope');
+ 		s.photosLeftCol = s.photosWrapper + ' > div:first-child > div:first-child';
+ 		s.photosContent = s.photosWrapper + ' > div:first-child > div:first-child';
+ 		s.photosRightCol = s.photosWrapper + ' > div:first-child > div:nth-child(3)';
+ 		s.sendFeedback = 'a[onclick*="appfeedback"]';
+ 		s.profileLink = 'a[oid]';
+ 		s.userContentImages = 'img[src*="googleusercontent.com"]';
+ 	},
  	this.processPost = function(post) {
  		self.processPostBody(getPostBody(post));
  		// launch feature processPost functions
@@ -1508,6 +1522,7 @@ function GTweaks() {
  		}
  	};
  	this.processView = function() {
+ 		if(Config.get('selectorAutoUpdate')) updateSelectors();
  		self.numPostsFound = 0;
 		self.numPostsParsed = 0;
  		// launch feature processPostBody functions
@@ -1545,7 +1560,7 @@ function GTweaks() {
 		
  		if(document.getElementById('contentPane')) {
  			document.getElementById('contentPane').addEventListener('DOMNodeInserted', function() {
- 				setTimeout(contentPaneChanged, 100);
+ 				setTimeout(contentPaneChanged, 300);
  			}, false);
  		}
 		//document.getElementById('contentPane').addEventListener('DOMNodeRemoved', contentPaneChanged, false);
@@ -1795,6 +1810,5 @@ function getPostBody(post) {
 	}
 	return postBody;
 }
-
 
 new GTweaks();

@@ -8,7 +8,7 @@
       	"includes/jqueryui.js", 
       	"includes/showdown.js", 
       	"includes/script_options.js", 
-      	"includes/userscript.user.js"
+      	"includes/bootstrap.js" 
       ],
       "matches": [ "http://plus.google.com/*", "https://plus.google.com/*" ],
       "run_at": "document_end"
@@ -19,5 +19,5 @@
    },
    "name": "Google+ Tweaks",
    "permissions": [ "http://plus.google.com/*", "https://plus.google.com/*", "unlimited_storage", "notifications" ],
-   "version": "1.113"
+   "version": "1.115"
 }
