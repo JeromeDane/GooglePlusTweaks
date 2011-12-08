@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.1151
+// @version        1.1152
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,6 +15,7 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
+// @history        1.116 another attempt to fix mute button     
 // @history        1.1151 Quick fix for failing markdown parsing     
 // @history        1.115 Added feedback button to options window to track suggestions/bugs     
 // @history        1.115 Options dialog now opens on first install
@@ -186,7 +187,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.1151;
+var version = 1.1152;
 var status = 'installed';
 if(GM_getValue('installedVersion', false) != version.toString()) {
 	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
@@ -1244,6 +1245,9 @@ function GTweaks() {
 			mutePost:function(post) {
 				var postButton = post.querySelector('div:first-child > div:first-child > span');
 				simulateClick(postButton);
+				
+				simulateClick($('div[role="menuitem"]', post)[2]);
+				/*
 				if($('div[role="menuitem"]', post).size() == 4) {
 					simulateClick($('div[role="menuitem"]', post)[2]);
 				} else if($('div[role="menuitem"]', post).size() == 3) {
@@ -1251,6 +1255,8 @@ function GTweaks() {
 				} else {
 					simulateClick(post);
 				}
+				*/
+				
 			},
 			processPost: function(post) {
 				var postButton = post.querySelector('div:first-child > div:first-child > span');
