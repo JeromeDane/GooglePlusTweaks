@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.1152
+// @version        1.1153
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,7 +15,11 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
-// @history        1.116 another attempt to fix mute button     
+// @history        1.1153 removed fixed navigation option     
+// @history        1.1153 yet another mute button tweak
+// @history        1.1153 fixed settings link not showing up in new layout of Google
+// @history        1.1153 added option to hide what's hot ribbon
+// @history        1.1152 another attempt to fix mute button     
 // @history        1.1151 Quick fix for failing markdown parsing     
 // @history        1.115 Added feedback button to options window to track suggestions/bugs     
 // @history        1.115 Options dialog now opens on first install
@@ -187,7 +191,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.1152;
+var version = 1.1153;
 var status = 'installed';
 if(GM_getValue('installedVersion', false) != version.toString()) {
 	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
@@ -317,12 +321,6 @@ function GTweaks() {
 				description:'View Google+ in the full width of your browser',
 				'default':false
 			},
-			"fixedNav":{
-				label:'Fixed Navigation',
-				type:'checkbox',
-				description:'Pin navigational elements so they stay visible',
-				'default':false
-			},
 			"inlinePlusShare":{
 				label:'Inline +1/shares',
 				type:'checkbox',
@@ -351,6 +349,11 @@ function GTweaks() {
 				label:'Chat List',
 				type:'checkbox',
 				description:'Hide the chat list in the left column'
+			},
+			"hideWhatsHot":{
+				label:'What\s Hot',
+				type:'checkbox',
+				description:'Hide "What\'s hot on Google+" ribbon'
 			},
 			"hideIncomingNotice":{
 				label:'Incoming Notice',
@@ -669,49 +672,6 @@ function GTweaks() {
 					self.features.favicon.icon.set();
 				}
 				setTimeout(self.features.favicon.checkForNotices, 5000);
-			}
-		},
-		fixedNavigation: {
-			init: function() {
-				var leftWidth = 188;
-				var rightColOffset = ($(window).width() / 2) + 280;
-				
-				function fixGbar(height) {
-					self.addStyle(selectors.googleBar + ' { position:fixed; top:0; width:100%; } #content { position:absolute; top:90px; }');
-					//$(selectors.googleBar).parent().after('<div style="height:' + height + 'px;">&nbsp;<div>');
-				}
-				if(Config.get('fixedNav')) {
-					fixGbar(navigator.userAgent.match(/chrome/i) ? 0 : 29);
-					self.addStyle(selectors.toolBar + ' { position:fixed; top:30px; z-index:1000; }' +
-						selectors.googleBar + ' { z-index:1200; }' +
-						// stream view
-						selectors.streamLeftCol + ' { position:fixed; top:90px; width:' + (leftWidth) + 'px; height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; width:188px;}' +
-						selectors.streamContent + ' { position:absolute; top:0; left:' + (leftWidth) + 'px; }' +
-						selectors.streamRightCol  + ' { position:fixed !important; top:90px !important; ' + 
-							(Config.get('fullWidth') ? 'right:0;' : 'left:' + rightColOffset + 'px;') + 
-						' }' +
-						selectors.streamNotificationCol + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
-						// profile (normal)
-						selectors.profileContent + ' > div:first-child + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-						// profile (with pics)
-						selectors.profileContent + ' > div:first-child + div + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-						// profile (verified with pics - scoble)
-						selectors.profileContent + ' > div:first-child + div + div + div + div > div:first-child + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-						// personal profile
-						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div { position:fixed; top:90px; ' + (Config.get('fullWidth') ? 'left:0;' : '') + '  height:' + ($(window).height() - 90) + 'px; overflow-y:auto; overflow-x:hidden; }' + 
-						selectors.profileContent + ' > div:first-child + div + div + div + div + div > div:first-child + div + div + div[role="tabpanel"] { top:300px; position: absolute; height:inherit; left:260px;  }' +
-						// search
-						s.search + ' { position:absolute; left:' + (leftWidth) + 'px; }' +
-						// footer/copyright
-						'#content + div { position:fixed; bottom:0; background:#' + (Config.get('readability') ? 'f1f1f1' : 'fff') + '; }' + 
-						'#content + div * { line-height:16px; height:16px; margin-top:0; margin-bottom:0; }' + 
-						''
-					);
-					// make the doc scroll to the top on top grey bar button click
-					$(selectors.streamLinksWrapper).click(function() {
-						$(document).scrollTop(0);
-					});
-				}
 			}
 		},
 		fullWidth: {
@@ -1246,7 +1206,11 @@ function GTweaks() {
 				var postButton = post.querySelector('div:first-child > div:first-child > span');
 				simulateClick(postButton);
 				
-				simulateClick($('div[role="menuitem"]', post)[2]);
+				if($('div[role="menuitem"]', post).size() == 3) {
+					simulateClick($('div[role="menuitem"]', post)[1]);
+				} else {
+					simulateClick($('div[role="menuitem"]', post)[2]);
+				}
 				/*
 				if($('div[role="menuitem"]', post).size() == 4) {
 					simulateClick($('div[role="menuitem"]', post)[2]);
@@ -1353,6 +1317,7 @@ function GTweaks() {
 			
 			if(Config.get('hideCopyright')) css += '#content + div { display:none !important; }';
 			if(Config.get('hideIncomingNotice')) css += selectors.streamIncomingNotice + ' { display:none; }';
+			if(Config.get('hideWhatsHot')) css += '.zhMuaf.Tp6dle { display:none; }';
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
@@ -1436,9 +1401,12 @@ function GTweaks() {
 	};
 	this.insertOptionsLink = function() {
  		$('a[href*="preferences"].gbgt + div ol.gbmcc li:eq(1)').after(
- 				'<li class="gbkc gbmtc"><a class="gbmt" href="javascript:void(0)" id="bcGTweaksOptLnk">Google+ tweaks</a></li>'
+ 				'<li class="gbkc gbmtc"><a class="gbmt bcGTweaksOptLnk" href="javascript:void(0)">Google+ tweaks</a></li>'
  		);
- 		$('#bcGTweaksOptLnk').click(self.openConfig);
+ 		$('#gbmpdv ol.gbmcc li:eq(1)').after(
+ 				'<li class="gbkc gbmtc"><a class="gbmt bcGTweaksOptLnk" href="javascript:void(0)">Google+ tweaks</a></li>'
+ 		);
+ 		$('.bcGTweaksOptLnk').click(self.openConfig);
  	}; 
  	this.openConfig = function() {
  		Config.open();
