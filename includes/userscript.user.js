@@ -397,6 +397,11 @@ function GTweaks() {
 				label:'Copyright',
 				type:'checkbox',
 				description:'Hide Google+ copyright footer'
+			},
+			"hideYouTubeSlider":{
+				label:'YouTube Slider',
+				type:'checkbox',
+				description:'Hide the YouTube Slider'
 			}
 		},
 		"Enhancements":{
@@ -1321,7 +1326,8 @@ function GTweaks() {
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
-			
+			if(Config.get('hideYouTubeSlider')) css += '.nJ.xT { display:none !important; }';
+
 			// right column
 			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
 			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
