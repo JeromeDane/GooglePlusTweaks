@@ -339,6 +339,12 @@ function GTweaks() {
 				description:'Show posts as previews. (work in progress)',
 				'default':false
 			},
+			"streamOnRight":{
+				label:'Stream filter on right',
+				type:'checkbox',
+				description:'Move the stream filter to the right column.',
+				'default':false
+			}
 		},
 		"Hide Things":{
 			'htmlLayout':{
@@ -1341,6 +1347,16 @@ function GTweaks() {
 					var sheet = document.createElement('style') ;
 					sheet.innerHTML = css;
 					document.body.appendChild(sheet);
+				}
+			}
+
+			// Move stream to right column.
+			if(Config.get('streamOnRight')){
+				var streamFilters = document.getElementsByClassName('ERsMo')[0];
+				var rightCol = $(selectors.streamRightCol).get(0);
+				if(streamFilters && rightCol){
+					streamFilters.parentElement.removeChild(streamFilters);
+					rightCol.insertBefore(streamFilters, rightCol.firstChild);
 				}
 			}
 		}
