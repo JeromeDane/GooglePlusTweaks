@@ -1352,7 +1352,7 @@ function GTweaks() {
 
 			// Move stream to right column.
 			if(Config.get('streamOnRight')){
-				var streamFilters = document.getElementsByClassName('ERsMo')[0];
+				var streamFilters = $('.ERsMo').get(0);
 				var rightCol = $(selectors.streamRightCol).get(0);
 				if(streamFilters && rightCol){
 					streamFilters.parentElement.removeChild(streamFilters);
