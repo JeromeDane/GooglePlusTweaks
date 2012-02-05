@@ -339,6 +339,12 @@ function GTweaks() {
 				description:'Show posts as previews. (work in progress)',
 				'default':false
 			},
+			"streamOnRight":{
+				label:'Stream filter on right',
+				type:'checkbox',
+				description:'Move the stream filter to the right column.',
+				'default':false
+			}
 		},
 		"Hide Things":{
 			'htmlLayout':{
@@ -397,6 +403,16 @@ function GTweaks() {
 				label:'Copyright',
 				type:'checkbox',
 				description:'Hide Google+ copyright footer'
+			},
+			"hideYouTubeSlider":{
+				label:'YouTube Slider',
+				type:'checkbox',
+				description:'Hide the YouTube Slider'
+			},
+			"hideOwnProfileLink":{
+				label:'Hide link to own profile',
+				type:'checkbox',
+				description:'Hide the link to your own profile at the top of the left column'
 			}
 		},
 		"Enhancements":{
@@ -1321,12 +1337,14 @@ function GTweaks() {
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
-			
+			if(Config.get('hideYouTubeSlider')) css += '.nJ.xT { display:none !important; }';
+			if(Config.get('hideOwnProfileLink')) css += '.k-Qf-pu-fa.k-pu-fa {display:none !important;}';
+
 			// right column
 			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
 			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
 			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
-			
+
 			// implement CSS
 			if(css != '') {
 				if(typeof(GM_addStyle) == 'function') {
@@ -1335,6 +1353,16 @@ function GTweaks() {
 					var sheet = document.createElement('style') ;
 					sheet.innerHTML = css;
 					document.body.appendChild(sheet);
+				}
+			}
+
+			// Move stream to right column.
+			if(Config.get('streamOnRight')){
+				var streamFilters = $('.ERsMo').get(0);
+				var rightCol = $(selectors.streamRightCol).get(0);
+				if(streamFilters && rightCol){
+					streamFilters.parentElement.removeChild(streamFilters);
+					rightCol.insertBefore(streamFilters, rightCol.firstChild);
 				}
 			}
 		}
