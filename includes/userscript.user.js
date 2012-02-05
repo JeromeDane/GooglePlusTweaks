@@ -408,6 +408,11 @@ function GTweaks() {
 				label:'YouTube Slider',
 				type:'checkbox',
 				description:'Hide the YouTube Slider'
+			},
+			"hideOwnProfileLink":{
+				label:'Hide link to own profile',
+				type:'checkbox',
+				description:'Hide the link to your own profile at the top of the left column'
 			}
 		},
 		"Enhancements":{
@@ -1333,12 +1338,13 @@ function GTweaks() {
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
 			if(Config.get('hideYouTubeSlider')) css += '.nJ.xT { display:none !important; }';
+			if(Config.get('hideOwnProfileLink')) css += '.k-Qf-pu-fa.k-pu-fa {display:none !important;}';
 
 			// right column
 			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
 			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
 			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
-			
+
 			// implement CSS
 			if(css != '') {
 				if(typeof(GM_addStyle) == 'function') {
