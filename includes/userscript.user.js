@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.1153
+// @version        1.1154
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,6 +15,21 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
+// @history        1.1154 Added option to hide YouTube button on the right
+// @history        1.1154 Added option to hide settings & help section from right column
+// @history        1.1154 Added option to hide hangouts section from right column
+// @history        1.1154 Fixed hide suggestions option hiding the wrong thing
+// @history        1.1154 Added option to hide find interesting people section from right column
+// @history        1.1154 Fixed hide send invites option hiding the wrong thing
+// @history        1.1154 Added option to hide Google+ Pages section from right column
+// @history        1.1154 Added option to hide Games section from right column
+// @history        1.1154 Fixed detection of currently selected post
+// @history        1.1154 Removed red border feature around currently sellected post (by popular demand)
+// @history        1.1154 Re-worked handling of post parsing 
+// @history        1.1154 Fixed inline plus/shares feature
+// @history        1.1154 Fixed muted post notices not being hidden
+// @history        1.1154 Added small margin after add comment box when using readibility mode
+// @history        1.1154 Fixed toggle comments
 // @history        1.1153 removed fixed navigation option     
 // @history        1.1153 yet another mute button tweak
 // @history        1.1153 fixed settings link not showing up in new layout of Google
@@ -191,7 +206,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.1153;
+var version = 1.1154;
 var status = 'installed';
 if(GM_getValue('installedVersion', false) != version.toString()) {
 	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
@@ -345,6 +360,11 @@ function GTweaks() {
 				type:'html',
 				text:'These settings let you <strong>hide elements</strong> you don\'t use<br/><br/>'
 			},
+			"hideYouTube":{
+				label:'YouTube',
+				type:'checkbox',
+				description:'Hide the you tube button on the right'
+			},
 			"hideChatRoster":{
 				label:'Chat List',
 				type:'checkbox',
@@ -379,15 +399,40 @@ function GTweaks() {
 				type:'checkbox',
 				description:'Hide the entire right column'
 			},
+			"hideSettingsAndHelp":{
+				label:'Settings & Help',
+				type:'checkbox',
+				description:'Hide settings & help from right column'
+			},
+			"hideStartHangouts":{
+				label:'Hangouts',
+				type:'checkbox',
+				description:'Hide hangouts section of right column'
+			},
 			"hideSuggestions":{
 				label:'Suggestions',
 				type:'checkbox',
 				description:'Hide suggestions of people to follow'
 			},
+			"hideFindInterestingPeople":{
+				label:'Find People',
+				type:'checkbox',
+				description:'Hide find interesting people from right col'
+			},
 			"hideSendInvites":{
 				label:'Send Invites',
 				type:'checkbox',
 				description:'Hide the "Send Invites" section'
+			},
+			"hideGooglePages":{
+				label:'Create Page',
+				type:'checkbox',
+				description:'Hide Google+ Pages section of right column'
+			},
+			"hideRightColGames":{
+				label:'Games',
+				type:'checkbox',
+				description:'Hide games section of right column'
 			},
 			"hideCopyrightLabel":{
 				type:'html',
@@ -744,31 +789,17 @@ function GTweaks() {
 			},
 			processPost:function(post) {
 				if(Config.get('inlinePlusShare')) {
-					var postBody = getPostBody(post);
-					var buttonsWrapper = $(postBody).next()[0];
-					var statWrapper = $(postBody).next().next()[0];
-					if(statWrapper) {
-						//statWrapper.style.display = 'none';
-						var plussesWrapper = statWrapper.querySelector('div:first-child');
-						if(plussesWrapper) {
-							var plusses = plussesWrapper.querySelector('div:first-child');
-							var plusButton = buttonsWrapper.querySelector('button');
-							$(plusButton).after(plusses);
-						}
-						var sharesWrapper = statWrapper.querySelector('div:first-child + div');
-						if(sharesWrapper) {
-							try {				// there isn't always a share button (e.g. locked albums etc.)
-								var shares = sharesWrapper.querySelector('span:first-child');
-								var shareButton = buttonsWrapper.querySelectorAll('span[role="button"]')[1];
-								$(shareButton).after(shares);
-								$(shareButton).after(' (');
-								$(shares).after(')');
-								$(shares).html($(shares).html().replace(/[^\d]/g, '') + '');
-							} catch(e) {}
-						}
-						$(statWrapper).before('<div style="display:none;" class="statWrapHider">&nbsp;</div>');
-						$('.statWrapHider', post).append(statWrapper);
+					
+					var plusses = $('.postPlusses', post);
+					$('.postPlusOneButton', post).after(plusses);
+					
+					var shares = $('.postShares', post);
+					if(shares.html()) {
+						shares.html('(' + shares.html().replace(/[^\d]/g, '') + ")");
+						shares.css('margin-left', '.5em');
+						$('.postShareButton', post).after(shares);
 					}
+					
 				}
 			}
 		},
@@ -917,8 +948,25 @@ function GTweaks() {
 					try {
 						var hasBeenCollapsed = false;
 						
-						var postBody = getPostBody(post);
-						var commentsWrapper = $(postBody).parent().next()[0];
+						if($('.postNumComments', post).html() != null) {
+							var commentsWrapper = $('.postCommentsWrapper', post);
+							
+							var numComments = $('.postNumComments', post);
+							numComments.html('(' + numComments.html() + ')');
+							numComments.css('margin-left', '.5em');
+							$('.postCommentButton', post).after(numComments);
+							
+							$('.postCommentsWrapper', post).toggle();
+							$('.postAddCommentBox', post).toggle();
+							
+							numComments.css('cursor', 'pointer');
+							numComments.attr('title', 'Toggle Comment Display'); 
+							numComments.click(function() {
+								$('.postCommentsWrapper', post).toggle();
+								$('.postAddCommentBox', post).toggle();
+							});
+						}
+						return;
 						
 						var _comments = commentsWrapper;
 						var buttonsWrapper = $(postBody).next()[0];
@@ -1203,8 +1251,9 @@ function GTweaks() {
 				}
 			},
 			mutePost:function(post) {
-				var postButton = post.querySelector('div:first-child > div:first-child > span');
-				simulateClick(postButton);
+				var postButton = $('.postButton', post);
+				document.title = postButton[0].title;
+				simulateClick(postButton[0]);
 				
 				if($('div[role="menuitem"]', post).size() == 3) {
 					simulateClick($('div[role="menuitem"]', post)[1]);
@@ -1223,7 +1272,8 @@ function GTweaks() {
 				
 			},
 			processPost: function(post) {
-				var postButton = post.querySelector('div:first-child > div:first-child > span');
+				var postButton = $('.postButton', post);
+				document.title = postButton.attr('title');
 				if($('.bcGTweaksMute', post).size() == 0) {
 					var _this = postButton;
 					setTimeout(function() {
@@ -1274,7 +1324,8 @@ function GTweaks() {
 							selectors.content + ' > div:first-child { background:' + bgColor + '; }' +
 							selectors.profileContent + ', #contentPane { background:' + bgColor + '; border:none; }' +
 							selectors.post + ' { margin-top:4px; border:1px solid #d2d2d2; border-top:1px solid #d2d2d2 !important; padding-bottom:0; }' +
-							selectors.postSelected + '{ border-color:#cc3333 !important; }'
+							selectors.postAddCommentBox + ' { margin-bottom:1em; }'
+							//selectors.postSelected + '{ border-color:#cc3333 !important; }'
 					);
 				}
 			}
@@ -1324,8 +1375,16 @@ function GTweaks() {
 			
 			// right column
 			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
+			if(Config.get('hideSettingsAndHelp')) css += selectors.streamRightColSettingsAndHelp + ' { display:none; }';
+			if(Config.get('hideStartHangouts')) css += selectors.streamRightColHangouts + ' { display:none; }';
 			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
+			if(Config.get('hideFindInterestingPeople')) css += selectors.streamRightColFindInterestingPeople + ' { display:none; }';
+			if(Config.get('hideGooglePages')) css += selectors.streamRightColGooglePages + ' { display:none; }';
 			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
+			if(Config.get('hideRightColGames')) css += selectors.streamRightColGames + ' { display:none; }';
+			
+			// youtube
+			if(Config.get('hideYouTube')) css += 'div[guidedhelpid="social-pane"] + div { display:none; }';
 			
 			// implement CSS
 			if(css != '') {
@@ -1341,24 +1400,26 @@ function GTweaks() {
 		
 		
 		
-		if(Config.get('debugSelectors') && $(s.content).size() > 0) {
+		if($(s.content).size() > 0) {
 			var possibleColors = ['pink', 'orange', 'yellow', 'green', 'blue', 'purple', 'gray', 'brown', 'red'];
 			var colors = {};
 			setTimeout(function() {
-				var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + Config.get('debugSelectorsPos') + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
-				html += '</div>';
+				if(Config.get('debugSelectors')) {
+					var html = '<div id="bcGPTksSelectorDebug" style="opacity:.9; position:absolute; top:100px; ' + Config.get('debugSelectorsPos') + ':0; font-weignt:normal; padding:1em; border:1px solid #000; background:#333; z-index:100;">';
+					html += '</div>';
+				}
 				function debugSelectors() {
 					var html = '<p>Selectors Found:</p>';s
 					for(var x in selectors) {
 						var elem = $(selectors[x])
-						var numFound = elem.size();
-						// generate a random color to identify the element
-						if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
-						var color = colors[x];
-						elem.css('background', color);
-						elem.attr('title', x);
-						html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
-						
+						if(Config.get('debugSelectors')) {
+							var numFound = elem.size();
+							// generate a random color to identify the element
+							if(typeof(colors[x]) == 'undefined') colors[x] = possibleColors[Math.floor(Math.random() * possibleColors.length)]; 
+							var color = colors[x];
+							elem.css('background', color);
+							html += '<span style="color:' + (numFound == 0 ? 'black' : color + '; font-weight:bold') + ';">' + x + ' ' + numFound + '</span><br/>';
+						}
 					}
 					$('#bcGPTksSelectorDebug').html(html);
 				}
@@ -1437,8 +1498,13 @@ function GTweaks() {
  			s.streamRightCol = s.streamContent + ' + div'
  				s.streamLinksWrapper = s.streamLeftCol + ' > div:first-child > div:first-child + div > div:first-child';
  					s.streamWelcomeLink = s.streamLinksWrapper + ' > h2 + div > a:first-child';
- 			s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
- 				s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
+			s.streamRightColSettingsAndHelp = s.streamRightCol + ' > div:first-child > div:nth-child(1)';
+			s.streamRightColHangouts = s.streamRightCol + ' > div:first-child > div:nth-child(2)';
+ 			s.streamRightColSuggestions = s.streamRightCol + ' > div:first-child > div:nth-child(3)';
+ 			s.streamRightColFindInterestingPeople = s.streamRightCol + ' > div:first-child > div:nth-child(4)';
+ 			s.streamRightColSendInvites = s.streamRightCol + ' > div:first-child > div:nth-child(5)';
+ 			s.streamRightColGooglePages = s.streamRightCol + ' > div:first-child > div:nth-child(6)';
+			s.streamRightColGames = s.streamRightCol + ' > div:first-child > div:nth-child(7)';
  			s.streamNotificationCol = s.stream + ' ' + (Config.get('selectorStreamNotificationCol') != '' ? Config.get('selectorStreamNotificationCol') : '.nope');		// When in notifications: #contentPane *class only* > div:first-child
  			s.incomingPostedBy = ' .Ov.GB';
  				s.incomingPostedByAddToCircles = s.incomingPostedBy + ' > div:first-child > div:first-child';
@@ -1449,24 +1515,29 @@ function GTweaks() {
  		s.search = s.content + ' ' + (Config.get('selectorSearch') != '' ? Config.get('selectorSearch') : '.nope');
  			s.profileContent = s.profile + ' .vcard > div:first-child'; 
  			s.profileLeftCol = s.profile + ' .a-e-b-Ob-ac.a-b-Ob-ac';
+ 		// post selectors
  		s.post = 'div[id^="update"]';
- 			s.postSelected = s.post + '.rh';		// you just have to figure out what class they're using
- 			dynamicSelectors.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
- 				dynamicSelectors.postCommentButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(2)';
- 				dynamicSelectors.postShareButton = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(2) > span:nth-child(3)';
- 				dynamicSelectors.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3)'; // wrapper for the plusses and shares
- 				dynamicSelectors.postPlussesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child'; 
- 					dynamicSelectors.postPlusses = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:first-child > span:first-child '; 	
- 				dynamicSelectors.postSharesWrapper = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2)'; 
- 					dynamicSelectors.postShares = s.post + ' > div:first-child > div:nth-child(2) > div:nth-child(3) > div:nth-child(2) > span:first-child'; 
- 			dynamicSelectors.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(3)';						 
+ 			s.postSelected = s.post + '.bh';		// you just have to figure out what class they're using
+ 			s.postBody = s.post + ' > div:first-child > div:nth-child(2)';						// dynamically detected
+ 				s.postTools = s.post + ' > div:first-child > div:nth-child(3)'; // wrapper for the plusses and shares
+ 					s.postPlusOneButton =  s.postTools + ' button[g\\:entity^="buzz"]';
+ 					s.postCommentButton = s.postTools + ' > span:nth-child(2)'; 
+ 					s.postHangoutButton = s.postTools + ' > span:nth-child(3)'; 
+ 					s.postShareButton = s.postTools + ' > span:nth-child(4)'; 
+ 				s.postPlussesAndShares = s.post + ' > div:first-child > div:nth-child(4)'; // wrapper for the plusses and shares
+ 					s.postPlussesWrapper = s.postPlussesAndShares + ' > div:first-child'; 
+ 						s.postPlusses = s.postPlussesWrapper + ' > span:first-child'; 	
+ 					s.postSharesWrapper = s.postPlussesAndShares + ' > div:nth-child(2)';  
+ 						s.postShares = s.postSharesWrapper + ' > span:first-child'; 
+			s.postCommentsWrapper = s.post + ' > div:first-child > div:nth-child(6)';						 
+				s.postNumComments = s.postCommentsWrapper + ' > div:first-child > div > span:first-child > span:first-child';
+ 			s.postAddCommentBox = s.post + ' > div:first-child > div:nth-child(7)';						 
  				dynamicSelectors.postCommentsNumBar = s.post + ' > div:first-child > div:nth-child(3) > div:first-child';						 
- 		
  				dynamicSelectors.postButton = s.post + ' > div:first-child > div:first-child > span';
  				
- 				s.postMutedNotice = '.En';
+ 				s.postMutedNotice = '.bcPoll.nt';
  		
- 		s.postPlusOneButton =  ' button[g\\:entity^="buzz"]';
+ 		
  		
  		s.postImages = 'img[src*="googleusercontent"]';
  		s.photosWrapper = (Config.get('selectorPhotos') != '' ? Config.get('selectorPhotos') : '.nope');
@@ -1528,6 +1599,25 @@ function GTweaks() {
  				var post = nodes[self.numPostsParsed];
  				if(!post.className.match(/bcPoll/)) {
  					post.className += ' bcPoll';
+ 					// mark post selector classes
+ 					for(var x in selectors) {
+ 						
+ 						//document.title = x;
+ 						
+ 						$(selectors[x]).each(function(i) {
+ 							elem = $(this);
+ 							if($(post).has(elem).length > 0) {
+ 								if(elem[0].className.indexOf(x) == -1) {
+ 									elem[0].className += " " + x;	
+	 							}
+	 							if(Config.get('debugSelectors')) {
+	 								elem[0].title = x;
+	 							}
+	 						}
+	 					
+ 						});
+ 						
+ 					}
 					self.processPost(post);
  				}
  			}
