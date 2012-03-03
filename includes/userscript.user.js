@@ -370,6 +370,11 @@ function GTweaks() {
 				type:'checkbox',
 				description:'Hide the chat list in the left column'
 			},
+			"hideOwnProfileLink":{
+				label:'Hide link to own profile',
+				type:'checkbox',
+				description:'Hide the link to your own profile at the top of the left column'
+			},
 			"hideWhatsHot":{
 				label:'What\s Hot',
 				type:'checkbox',
@@ -1372,6 +1377,7 @@ function GTweaks() {
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
+			if(Config.get('hideOwnProfileLink')) css += '.k-Qf-pu-fa.k-pu-fa {display:none !important;}';
 			
 			// right column
 			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
