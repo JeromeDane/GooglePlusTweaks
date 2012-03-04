@@ -354,6 +354,12 @@ function GTweaks() {
 				description:'Show posts as previews. (work in progress)',
 				'default':false
 			},
+			"streamOnRight":{
+				label:'Stream filter on right',
+				type:'checkbox',
+				description:'Move the stream filter to the right column.',
+				'default':false
+			}
 		},
 		"Hide Things":{
 			'htmlLayout':{
@@ -369,6 +375,11 @@ function GTweaks() {
 				label:'Chat List',
 				type:'checkbox',
 				description:'Hide the chat list in the left column'
+			},
+			"hideOwnProfileLink":{
+				label:'Hide link to own profile',
+				type:'checkbox',
+				description:'Hide the link to your own profile at the top of the left column'
 			},
 			"hideWhatsHot":{
 				label:'What\s Hot',
@@ -1372,16 +1383,47 @@ function GTweaks() {
 			if(Config.get('hideChatRoster')) css += selectors.chatRoster + ' { display:none !important; }';
 			if(Config.get('hideSendFeedback')) css += selectors.sendFeedback + ' { display:none !important; }';
 			if(Config.get('hidePlusMention')) css += '.proflinkPrefix { display:none !important; }';
-			
+			if(Config.get('hideOwnProfileLink')) css += '.k-Qf-pu-fa.k-pu-fa {display:none !important;}';
+
+			// Selectors for the right column use the CSS 'first-child' syntax.
+			// But if we move the stream filters to the right column, this
+			// needs to become 'nth-child(2)' to work. The function bound to
+			// this variable will change things as needed.
+			var fixSelector;
+
+			// Move stream filters to right.
+			if(Config.get('streamOnRight')){
+				// Select the filters and the column.
+				var streamFilters = $('.ERsMo').get(0);
+				var rightCol = $(selectors.streamRightCol).get(0);
+
+				// Remove from the left column, add at the start of the right.
+				if(streamFilters && rightCol){
+					streamFilters.parentElement.removeChild(streamFilters);
+					rightCol.insertBefore(streamFilters, rightCol.firstChild);
+				}
+
+				// Define the function to fix selectors.
+				fixSelector = function(v){
+					if(v.replace) return v.replace(/first-child/, 'nth-child(2)');
+					return v;
+				}
+			}
+
+			// Not moving stream filters, so no need to edit selectors.
+			else{
+				fixSelector = function(v){return v;}
+			}
+
 			// right column
-			if(Config.get('hideRightCol')) css += selectors.streamRightCol + ' { display:none; }';
-			if(Config.get('hideSettingsAndHelp')) css += selectors.streamRightColSettingsAndHelp + ' { display:none; }';
-			if(Config.get('hideStartHangouts')) css += selectors.streamRightColHangouts + ' { display:none; }';
-			if(Config.get('hideSuggestions')) css += selectors.streamRightColSuggestions + ' { display:none; }';
-			if(Config.get('hideFindInterestingPeople')) css += selectors.streamRightColFindInterestingPeople + ' { display:none; }';
-			if(Config.get('hideGooglePages')) css += selectors.streamRightColGooglePages + ' { display:none; }';
-			if(Config.get('hideSendInvites')) css += selectors.streamRightColSendInvites + ' { display:none; }';
-			if(Config.get('hideRightColGames')) css += selectors.streamRightColGames + ' { display:none; }';
+			if(Config.get('hideRightCol')) css += fixSelector(selectors.streamRightCol) + ' { display:none; }';
+			if(Config.get('hideSettingsAndHelp')) css += fixSelector(selectors.streamRightColSettingsAndHelp) + ' { display:none; }';
+			if(Config.get('hideStartHangouts')) css += fixSelector(selectors.streamRightColHangouts) + ' { display:none; }';
+			if(Config.get('hideSuggestions')) css += fixSelector(selectors.streamRightColSuggestions) + ' { display:none; }';
+			if(Config.get('hideFindInterestingPeople')) css += fixSelector(selectors.streamRightColFindInterestingPeople) + ' { display:none; }';
+			if(Config.get('hideGooglePages')) css += fixSelector(selectors.streamRightColGooglePages) + ' { display:none; }';
+			if(Config.get('hideSendInvites')) css += fixSelector(selectors.streamRightColSendInvites) + ' { display:none; }';
+			if(Config.get('hideRightColGames')) css += fixSelector(selectors.streamRightColGames) + ' { display:none; }';
 			
 			// youtube
 			if(Config.get('hideYouTube')) css += 'div[guidedhelpid="social-pane"] + div { display:none; }';
