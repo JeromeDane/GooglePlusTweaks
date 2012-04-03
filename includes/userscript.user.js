@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.1155
+// @version        1.1157
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,6 +15,8 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
+// @history        1.1157 Updated icon
+// @history        1.1157 Fixed another place where tab/page title was being set by debugging routine
 // @history        1.1155 Fixed Google+ Tweaks settings link not showing
 // @history        1.1155 Fixed tab/page title being set by debugging routine
 // @history        1.1155 Fixed the easy mentions feature
@@ -191,7 +193,7 @@
 
 // License         Creative Commons Attribution 3.0 Unported License http://creativecommons.org/licenses/by/3.0/
 //
-// Copyright (c) 2011 Jerome Dane
+// Copyright (c) 2012 Jerome Dane
 //
 // Permission is hereby granted, free of charge, to any person obtaining 
 // a copy of this software and associated documentation files (the "Software"), 
@@ -210,7 +212,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.1155;
+var version = 1.1157;
 var status = 'installed';
 if(GM_getValue('installedVersion', false) != version.toString()) {
 	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
@@ -703,7 +705,7 @@ function GTweaks() {
 			}
 		},
 		favicon: {
-			src: 'data:image/x-icon;base64,AAABAAEAEBAAAAEAIABoBAAAFgAAACgAAAAQAAAAIAAAAAEAIAAAAAAAAAQAAAAAAAAAAAAAAAAAAAAAAAD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AJubm3guLi7/Ly8v/zExMf8yMjL/MjIy/zMzM/8yMjL/MjIy/zExMf8vLy//Li4u/y0tLf+enp50////AP///wAvLy//MTEx/zMzM/80NDT/NTU1/zY2Nv8mJib/JiYm/zU1Nf80NDT/MjIy/zAwMP8uLi7/LS0t/////wD///8AMjIy/zQ0NP82Njb/ODg4/zo6Ov87Ozv/09HR/9PR0f86Ojr/ODg4/zY2Nv80NDT/MjIy/y8vL/////8A////ADU1Nf84ODj/Ozs7/z09Pf8/Pz//QEBA/+Pi4v/j4uL/Pz8//z09Pf87Ozv/ODg4/zU1Nf8yMjL/////AP///wA5OTn/PDw8/z8/P/8tLS3/Ly8v/y8vL//o5+f/6Ofn/y8vL/8tLS3/LCws/zw8PP85OTn/NTU1/////wD///8APDw8/0BAQP9CQkL/7ezs/+3s7P/t7Oz/7ezs/+3s7P/t7Oz/7ezs/+3s7P8/Pz//Ozs7/zg4OP////8A////AD8/P/9CQkL/RUVF//Hx8f/x8fH/8fHx//Hx8f/x8fH/8fHx//Hx8f/x8fH/QkJC/z4+Pv86Ojr/////AP///wBAQED/RERE/0dHR/9JSUn/SUlJ/0lJSf/29fX/9vX1/0lJSf9JSUn/R0dH/0RERP9AQED/PDw8/////wD///8AQkJC/0ZGRv9ISEj/SUlJ/0lJSf9JSUn/+fn5//n5+f9ISEj/SEhI/0dHR/9GRkb/QkJC/z4+Pv////8A////AENDQ/9HR0f/SUlJ/0lJSf9JSUn/SUlJ//39/f/9/f3/SUlJ/0lJSf9JSUn/R0dH/0NDQ/8/Pz//////AP///wBERET/R0dH/0lJSf9JSUn/SUlJ/0lJSf9JSUn/SUlJ/0lJSf9JSUn/SUlJ/0dHR/9DQ0P/Pz8//////wD///8ANzc3/zo6Ov88PDz/PDw8/zw8PP88PDz/PDw8/zw8PP88PDz/PDw8/zw8PP86Ojr/Nzc3/zQ0NP////8A////AA8P1f8PD9X/Dw/V/+hpM//oaTP/6Gkz/+hpM/8lmQD/JZkA/yWZAP8mkwP/EbLu/xGy7v8Rsu7/////AP///wCHh+p+Dw/V/w8P1f/oaTP/6Gkz/+hpM//oaTP/JZkA/yWZAP8lmQD/JpQE/xGy7v8Rsu7/jNr2ef///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A////AP///wD///8A//8AAMADAACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAACAAQAAgAEAAIABAADAAwAA//8AAA%3D%3D', 
+			src: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyBpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBXaW5kb3dzIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjA4MDQ4QjZDN0RCRTExRTE4MUVCRDM3Q0U3QTBDNUI5IiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjA4MDQ4QjZEN0RCRTExRTE4MUVCRDM3Q0U3QTBDNUI5Ij4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6MDgwNDhCNkE3REJFMTFFMTgxRUJEMzdDRTdBMEM1QjkiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6MDgwNDhCNkI3REJFMTFFMTgxRUJEMzdDRTdBMEM1QjkiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz75n6o8AAACmElEQVR42pSTbUhTURjH//dlb+6mcysbzYaGNmVrSjQw7U2hKD9J1AdBiMJKP1Vg0IeKiCjQIIJE+qD0QQyKIIMQDTIr3/qStdWcYnMEmdSY2sbudnfv7dy7Go4k8MCf8zxwzu88z/+cQw1XbT0HoJXIgfWNAFEXK8lya7Gr3KHV69a1O8knHEGfv5VlTBaH+fhZcFV1YPLy/1kY7utCuLdTjWkjh5LHE5ipd4HSaCDKcLCenmdILEXw5GQDKH0Oqi9cgc1TjY8PezB6+xqKjDoUG7UqQJRkdSZVkxKSBCCDZjaYMN5xFdtWvsO++AWjF08jHgnD3XgKB3e6YTewZKOUURr0JycAVmFuFmLQUCQgKqUEhEaGUNbQCKmwGOL8LNwvAlltOQf96rw9ugJWCQxWGxILocwCRkioc+RrCFpy0t2KLWqu43LRMjqdyX9EebACz6Pg6AmEPkxCFgSwuSYUHjiM+bfDiE97wbA0avIN6gY5J31Tf/M5SgT7pvse6i9dB/dgEDH/FHJ37cU33xRG2ppRpkWmbxWwygNlpIipVHupSbbX1MJ5pAHOY01IJXj01blRQgugqewrTRHTJiI89pjTFcwsxUCbNTS4T5P4fL8DEiHTGi0qPR7IspTlviKKAHabdJlcAdJKGRw5qdBixoLvPYGIKG/vhrXxDERR+q/UFuZeDsi2qv1IRX8R14PI2WSFcWNB+hW+GkDgxnnV3LWGfzkOdjkaQ39dBfjwT+hpYpTeiNrLt1BOPDHvOwR7cxuCnTfXBCgPidGNDTS5maS5SM+ggPhhgQjv0HNIXB6szgpIBiMWn/YST+QsxUkL4WTKy9pY3AnGki0EuGM1/V3/I1hclZgde43ACr9WAV7lO/8WYABPwUHrAER4GQAAAABJRU5ErkJggg%3D%3D', 
 			icon: null,
 			init: function() {
 				var icon = new FavIcon(self.features.favicon.src);
@@ -1275,7 +1277,6 @@ function GTweaks() {
 			},
 			processPost: function(post) {
 				var postButton = $('.postButton', post);
-				document.title = postButton.attr('title');
 				if($('.bcGTweaksMute', post).size() == 0) {
 					var _this = postButton;
 					setTimeout(function() {
@@ -1603,8 +1604,6 @@ function GTweaks() {
  					post.className += ' bcPoll';
  					// mark post selector classes
  					for(var x in selectors) {
- 						
- 						//document.title = x;
  						
  						$(selectors[x]).each(function(i) {
  							elem = $(this);
