@@ -3,7 +3,7 @@
 // @description    Tweaks to the layout and features of Google+
 // @author         Jerome Dane
 // @website        http://userscripts.org/scripts/show/106166
-// @version        1.1154
+// @version        1.1155
 //
 // @updateURL      https://userscripts.org/scripts/source/106166.meta.js
 // 
@@ -15,6 +15,10 @@
 // @require        https://userscripts.org/scripts/source/106223.user.js
 // @require        https://userscripts.org/scripts/source/112968.user.js
 //
+// @history        1.1155 Fixed Google+ Tweaks settings link not showing
+// @history        1.1155 Fixed tab/page title being set by debugging routine
+// @history        1.1155 Fixed the easy mentions feature
+// @history        1.1155 Removed Flattr button
 // @history        1.1154 Added option to hide YouTube button on the right
 // @history        1.1154 Added option to hide settings & help section from right column
 // @history        1.1154 Added option to hide hangouts section from right column
@@ -206,7 +210,7 @@
 // CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE 
 // OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-var version = 1.1154;
+var version = 1.1155;
 var status = 'installed';
 if(GM_getValue('installedVersion', false) != version.toString()) {
 	status = GM_getValue('installedVersion', false) ? 'upgraded' : 'new';
@@ -300,7 +304,6 @@ function GTweaks() {
 	var self = this;
 	this.css = '';
 	this.donateButtonsHtml = '<a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=773DHSKBK7PXQ" title="Donate through PayPal to support Google+ Tweaks"><img src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_SM.gif" /></a> &nbsp; ' +
-		'<a href="http://flattr.com/thing/371262/Google-Tweaks" target="_blank"><img src="http://api.flattr.com/button/flattr-badge-large.png" alt="Flattr Google+ Tweaks" title="Flattr this" border="0" /></a>' +
 		'<a href="https://googleplustweaks.uservoice.com" ' +
 			'style="background-image: url(http://widget.uservoice.com/images/clients/widget2/tab-horizontal-dark.png); border:1px solid #fff; border-radius:2px; ' +
 					'-webkit-box-shadow: rgba(255, 255, 255, 0.246094) 1px 1px 1px inset, rgba(0, 0, 0, 0.496094) 0px 1px 2px; box-shadow: rgba(255, 255, 255, 0.246094) 1px 1px 1px inset, rgba(0, 0, 0, 0.496094) 0px 1px 2px; font: normal normal bold 14px/1em Arial, sans-serif; right: 10px; bottom: 0px; z-index: 9999; background-color: rgb(204, 109, 0); display: inline-block; margin-bottom: 0px; background-position: 0px 50%; background-repeat: no-repeat no-repeat; ' +
@@ -1083,7 +1086,7 @@ function GTweaks() {
 						mention.className = 'bcGTweakEzMntn';
 						$(mention).click(function() {
 							// find post wrapper
-							var addCommentLink = $(selectors.postCommentButton, post)[0];
+							var addCommentLink = $('.postCommentButton', post)[0];
 							simulateClick(addCommentLink);
 							
 							function insertMentionRef(name, id) {
@@ -1252,7 +1255,6 @@ function GTweaks() {
 			},
 			mutePost:function(post) {
 				var postButton = $('.postButton', post);
-				document.title = postButton[0].title;
 				simulateClick(postButton[0]);
 				
 				if($('div[role="menuitem"]', post).size() == 3) {
@@ -1464,7 +1466,7 @@ function GTweaks() {
  		$('a[href*="preferences"].gbgt + div ol.gbmcc li:eq(1)').after(
  				'<li class="gbkc gbmtc"><a class="gbmt bcGTweaksOptLnk" href="javascript:void(0)">Google+ tweaks</a></li>'
  		);
- 		$('#gbmpdv ol.gbmcc li:eq(1)').after(
+ 		$('#gbmplp').after(
  				'<li class="gbkc gbmtc"><a class="gbmt bcGTweaksOptLnk" href="javascript:void(0)">Google+ tweaks</a></li>'
  		);
  		$('.bcGTweaksOptLnk').click(self.openConfig);
@@ -1488,7 +1490,7 @@ function GTweaks() {
  		// class used to restrict content width when viewing stream after another section like a profile or photos. Usually a 2 character code
  		s.chatRoster = '#oz-chat-roster';
  		
- 		s.postCommentEditorMention = 'f-IE';
+ 		s.postCommentEditorMention = 'e-QXyXGe';
  		
  		s.stream = s.content + ' ' + Config.get('selectorMainWrapper');
  			s.streamLeftCol = s.stream + ' > div:first-child';
