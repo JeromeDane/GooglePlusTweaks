@@ -1260,9 +1260,9 @@ function GTweaks() {
 				simulateClick(postButton[0]);
 				
 				if($('div[role="menuitem"]', post).size() == 3) {
-					simulateClick($('div[role="menuitem"]', post)[1]);
+					simulateClick($('div[role="menuitem"]', post)[0]);
 				} else {
-					simulateClick($('div[role="menuitem"]', post)[2]);
+					simulateClick($('div[role="menuitem"]', post)[1]);
 				}
 				/*
 				if($('div[role="menuitem"]', post).size() == 4) {
